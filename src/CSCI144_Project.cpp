@@ -62,34 +62,72 @@
 using namespace std;
 
 void *TrafficLight(void *);
-void *Sensor(void *direction);
+void *Sensor(void *arguments); //of TimeandDirection class
 
-//Simple Runtime Pass using Global Variable
-double SimulationLength=0;
+class TimeandDirection{
+public:
+	clock_t initialTime;
+	double simulationLength;
+	int direction;
+};
 
 int main() {
 	clock_t t; t=clock();
-	cout<<"Simulation Length (in Seconds): ";cin>>SimulationLength;cout<<endl;
+	double simulationLength;
+	cout<<"Simulation Length (in Seconds): ";cin>>simulationLength;cout<<endl;
 
 	//1: Multithreading
 	//Thread 0: Intersection Sensor (Controls Queue)
 	//Threads 1-4: Directional Sensors (Generate Cars, place in Queue)
 	//Direction = 1 if Northbound, 2 if Eastbound, 3 if Southbound, 4 if Westbound
 	pthread_t threads[5];
+	//Create Arguments to pass;
+	TimeandDirection arguments[4];
+	for (int i = 0; i<4; i++)
+	{
+		arguments[i].initialTime=t;
+		arguments[i].simulationLength=simulationLength;
+		arguments[i].direction=i;
+	}
+	TimeandDirection * argpointer = arguments;
 
+	//Officially Create Threads
 	pthread_create(&threads[0], NULL, &TrafficLight, NULL);
-	int *direction = 1; //Northbound
-	pthread_create(&threads[1], NULL, &Sensor, (void*) direction);
-	int *direction = 2; //Eastbound
-	pthread_create(&threads[2], NULL, &Sensor, (void*) direction);
-	int *direction = 3; //Southbound
-	pthread_create(&threads[3], NULL, &Sensor, (void*) direction);
-	int *direction = 4; //Westbound
-	pthread_create(&threads[4], NULL, &Sensor, (void*) direction);
+	for (int i = 1; i<5; i++)
+	{
+		pthread_create(&threads[i], NULL, &Sensor, (void*) (argpointer+i-1));
+	}
 
+	//Return from all threads: We wait for all Car Generators to be done before Queue
+	for (int i = 1; i<5; i++)
+	{
+		pthread_join(threads[i], NULL);
+	}
+	pthread_join(threads[0],NULL);
 
 	//	Returns the time taken.
 	cout<<"Time Taken: "<<((float)clock()-t)/CLOCKS_PER_SEC<<" Seconds";
 
 	return 0;
+}
+
+void *TrafficLight(void *)
+{
+	cout<<"WHOOOOO!"<<endl;
+	return NULL;
+}
+
+void *Sensor(void *arguments) //of TimeandDirection class
+{
+
+	clock_t t = ((class TimeandDirection*)arguments)->initialTime;
+	double simulationLength = ((class TimeandDirection*)arguments)->simulationLength;
+	int direction = ((class TimeandDirection*)arguments)->direction;
+
+	cout<<"WHEEEEEE!"<<endl;
+	while((float)clock()/CLOCKS_PER_SEC-t>0)
+	{
+
+	}
+	return NULL;
 }
