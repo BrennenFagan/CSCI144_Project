@@ -88,19 +88,27 @@ public:
 };
 
 vector<int> headOfLines; //Stores the positions of the directions. If (0) then there are no cars. Otherwise, 1, 1st ... n, nth in line.
-vector<queue<car> > carQueues; //place to store ALL THE CARS
+vector<queue<float> > carQueues; //place to store ALL THE CARS, sorted by direction, and storing the cars' arrival times.
+int backOfLine = 1;
 
 //Locks
 pthread_mutex_t sensorLock = PTHREAD_MUTEX_INITIALIZER;
 
 int main() {
 	//NUMBER OF DIRECTIONS
-	int numDirections = 1;
+	int numDirections;
 	srand(time(NULL));
 	clock_t t; t=clock();
 	double simulationLength;
+
+	cout<<"Car Making Length (in Seconds): ";cin>>simulationLength;
+	cout<<"Number of directions (min: 1)?: ";cin>>numDirections;
+	if(numDirections<1)
+		numDirections = 1;
+
+	//Initialize the shared structures.
 	headOfLines.assign(numDirections,0);
-	cout<<"Car Making Length (in Seconds): ";cin>>simulationLength;cout<<endl;
+	carQueues.assign(numDirections, queue<float>());
 
 	//1: Multithreading
 	//Thread 0: Intersection Sensor (Controls Queue)
@@ -145,7 +153,30 @@ void *TrafficLight(void *arguments) //of TimeandDirection class
 	//We continue to operate the queue until there are both no cars remaining and our time is up.
 	//Hence, we need to be passed the start time and stop time.
 	cout<<"Houston, Traffic Queue is Go. \n";
+	printf("size of carQueues: %d \n", carQueues.size());
+	bool empty = true;
+	while( not(empty) || (((float)clock()-t)/CLOCKS_PER_SEC<simulationLength) )
+	{
+		pthread_mutex_lock( &sensorLock );
+		for (int i=0; i< carQueues.size();i++)
+			carQueues[i]=queue<float>();
 
+		pthread_mutex_unlock( &sensorLock );
+
+
+		//Check if empty
+		empty = true;
+		for (int i=0; i< carQueues.size(); i++)
+		{
+			//If any are not empty, then the TrafficLight is not empty.
+			if(not(carQueues[i].empty()))
+			{
+				empty = false;
+				break;
+			}
+		}
+
+	}
 	return NULL;
 }
 
@@ -180,10 +211,23 @@ void *Sensor(void *arguments) //of TimeandDirection class
 			//Time to load a car
 			pthread_mutex_lock( &sensorLock );
 			//printf("Load: carTime: %f, measuredTime: %f, remainingTime: %f \n", (double)carTime, (measuredTime/CLOCKS_PER_SEC), (double)remainingTime);
-
 			//Load car into queue
+
+			clock_t toLoad=clock()/CLOCKS_PER_SEC;
+			//make sure our arrival is logged
+			if(headOfLines[direction])
+				;
+			else//i.e. 0
+			{
+				headOfLines[direction]=backOfLine++;
+			}
+			//load the cars into their appropriate queue
+			carQueues[direction].push((float)toLoad);
+
+			//Done Loading Car
 			pthread_mutex_unlock( &sensorLock );
-			//usleep(100000); causes entire thread to sleep, and appears not to alter internal state of the thread, or something to that extent.
+			usleep(100000);// causes entire thread to sleep, and appears not to alter internal state of the thread, or something to that extent.
+			//So instead of just delaying another car generation, this instead delays, without changing, the time measurements.
 
 			//Generate another Car~
 			measuredTime = clock(); // in clocks
