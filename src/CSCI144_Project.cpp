@@ -49,19 +49,29 @@
  *  B2 : Implement a "Stop Sign Rule" for comparison and do Data Gathering
  */
 
+/*
+ * We assume:
+ * 	People follow the rules of the road.
+ * 	The stop-lights themselves are run by another system that reads the state of the sensor.
+ */
+
 #include <iostream>
+#include <queue>
 
 //Thread Utilities
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <mutex>
 
 //Timing Utilities
 #include <time.h>
+#include <unistd.h>
 
 using namespace std;
 
-void *TrafficLight(void *);
+//Functions and Arguments
+void *TrafficLight(void *arguments);//of TimeandDirection: direction = 0; Using this entirely to know when to stop
 void *Sensor(void *arguments); //of TimeandDirection class
 
 class TimeandDirection{
@@ -71,19 +81,35 @@ public:
 	int direction;
 };
 
+class car{
+public:
+	clock_t arrivalTime;
+	int direction;
+};
+
+vector<int> headOfLines; //Stores the positions of the directions. If (0) then there are no cars. Otherwise, 1, 1st ... n, nth in line.
+vector<queue<car> > carQueues; //place to store ALL THE CARS
+
+//Locks
+pthread_mutex_t sensorLock = PTHREAD_MUTEX_INITIALIZER;
+
 int main() {
+	//NUMBER OF DIRECTIONS
+	int numDirections = 1;
+	srand(time(NULL));
 	clock_t t; t=clock();
 	double simulationLength;
-	cout<<"Simulation Length (in Seconds): ";cin>>simulationLength;cout<<endl;
+	headOfLines.assign(numDirections,0);
+	cout<<"Car Making Length (in Seconds): ";cin>>simulationLength;cout<<endl;
 
 	//1: Multithreading
 	//Thread 0: Intersection Sensor (Controls Queue)
 	//Threads 1-4: Directional Sensors (Generate Cars, place in Queue)
 	//Direction = 1 if Northbound, 2 if Eastbound, 3 if Southbound, 4 if Westbound
-	pthread_t threads[5];
+	pthread_t threads[numDirections+1];
 	//Create Arguments to pass;
-	TimeandDirection arguments[4];
-	for (int i = 0; i<4; i++)
+	TimeandDirection arguments[numDirections+1];
+	for (int i = 0; i<numDirections+1; i++)
 	{
 		arguments[i].initialTime=t;
 		arguments[i].simulationLength=simulationLength;
@@ -92,14 +118,14 @@ int main() {
 	TimeandDirection * argpointer = arguments;
 
 	//Officially Create Threads
-	pthread_create(&threads[0], NULL, &TrafficLight, NULL);
-	for (int i = 1; i<5; i++)
+	pthread_create(&threads[0], NULL, &TrafficLight, (void*) argpointer);
+	for (int i = 1; i<numDirections+1; i++)
 	{
 		pthread_create(&threads[i], NULL, &Sensor, (void*) (argpointer+i-1));
 	}
 
 	//Return from all threads: We wait for all Car Generators to be done before Queue
-	for (int i = 1; i<5; i++)
+	for (int i = 1; i<numDirections+1; i++)
 	{
 		pthread_join(threads[i], NULL);
 	}
@@ -111,9 +137,15 @@ int main() {
 	return 0;
 }
 
-void *TrafficLight(void *)
+void *TrafficLight(void *arguments) //of TimeandDirection class
 {
-	cout<<"WHOOOOO!"<<endl;
+	clock_t t = ((class TimeandDirection*)arguments)->initialTime;
+	double simulationLength = ((class TimeandDirection*)arguments)->simulationLength;
+	//int direction = ((class TimeandDirection*)arguments)->direction; //not used.
+	//We continue to operate the queue until there are both no cars remaining and our time is up.
+	//Hence, we need to be passed the start time and stop time.
+	cout<<"Houston, Traffic Queue is Go. \n";
+
 	return NULL;
 }
 
@@ -124,10 +156,42 @@ void *Sensor(void *arguments) //of TimeandDirection class
 	double simulationLength = ((class TimeandDirection*)arguments)->simulationLength;
 	int direction = ((class TimeandDirection*)arguments)->direction;
 
-	cout<<"WHEEEEEE!"<<endl;
-	while((float)clock()/CLOCKS_PER_SEC-t>0)
-	{
+	printf("Launch! %d \n", direction);
 
+	//Generate a Car that arrives at some random time between the current clock and stop of the simulation.
+	//Start = measured time
+	//Stop = simulationLength + start time (t)
+	//Length = Stop-Start
+
+	clock_t measuredTime = clock(); // in clocks
+	double stopTime = simulationLength + t/CLOCKS_PER_SEC;//in seconds
+	double remainingTime = stopTime - measuredTime/CLOCKS_PER_SEC;//in seconds
+	//Linear relationship between remainingTime and car probability.
+	long double carTime = ((double)(rand()%100)/100)*remainingTime;//in seconds
+
+	//While the current time is inside the simulation window
+	//If the time has come for the next car to launch
+	//Try to acquire the lock, and load the car into the queue
+	//Generate the next car's arrival time within the remaining time
+	while(((float)clock()-t)/CLOCKS_PER_SEC<simulationLength)
+	{
+		if(((float)clock()-t)/CLOCKS_PER_SEC>carTime)
+		{
+			//Time to load a car
+			pthread_mutex_lock( &sensorLock );
+			//printf("Load: carTime: %f, measuredTime: %f, remainingTime: %f \n", (double)carTime, (measuredTime/CLOCKS_PER_SEC), (double)remainingTime);
+
+			//Load car into queue
+			pthread_mutex_unlock( &sensorLock );
+			//usleep(100000); causes entire thread to sleep, and appears not to alter internal state of the thread, or something to that extent.
+
+			//Generate another Car~
+			measuredTime = clock(); // in clocks
+			stopTime = simulationLength + t/CLOCKS_PER_SEC;//in seconds
+			remainingTime = stopTime - measuredTime/CLOCKS_PER_SEC;//in seconds
+			carTime = ((double)(rand()%100)/100)*remainingTime;//in seconds
+		}
 	}
+	printf("Return, %d \n",direction);
 	return NULL;
 }
