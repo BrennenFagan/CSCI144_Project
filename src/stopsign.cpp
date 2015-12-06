@@ -43,59 +43,61 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 		cout<<endl;
 	}
 
-	//We need to construct all of the arguments first, before assigning a pointer to the arguments
-	//1: Create Threads
-	pthread_t threads[numDirections+1];
-
-	//Create Arguments to pass;
-	/*
-	TimeandDirection arguments[numDirections+1];
-	for (int i = 0; i<numDirections+1; i++)
+	//Basing Off of HW3.1
+	//Create threads space
+	pthread_t *threads;
+	threads = (pthread_t *)malloc((numDirections+1) * sizeof(*threads)); //allocate memory space
+/*
+	for (int row = 0; row<rowsA; row++)
 	{
-		arguments[i].initialTime=t;
-		arguments[i].simulationLength=simulationLength;
-		arguments[i].direction=i;
-	}
-	TimeandDirection * argpointer = arguments;
+		for (int col = 0; col<colsB; col++)
+		{
+			//Now we've broken the threads and pairs down by coordinate
+			//each thread has coordinate: row*colsB + col
 
-	compared with
-
+			//create a victim, assign its location and memory, and assign its vectors
 			vectorpair *victim;
 			victim = (vectorpair*)malloc(sizeof(*victim));
-	*/
 
-	argument loads[numDirections];
-	for (int i = 0; i<numDirections; i++)
-	{
-		loads[i].size=simulationLength*10;
-		for (int j = 0; j<simulationLength*10; j++)
+			//convert array to vector
+			vector<int> Arow(A[row], A[row]+colsA);
+			vector<int> BTrow(BT[col], BT[col] + colsA);
+
+			victim->Arow=Arow;
+			victim->Brow=BTrow;
+
+			cout<<"Creating thread: "<<row*colsB+col<<endl;
+
+			int success = pthread_create(&threads[row*colsB+col], NULL, &VectorDot, (void*)victim);
+			if(success != 0)
 			{
-				loads[i].contents[j]=workLoad[i][j];
-				cout<<" "<<loads[i].contents[j];
+	            fprintf(stderr,"ERROR: LINE 201: THREAD CREATION");
 			}
-		cout<<endl;
-	}
-	argument *argpointer; argpointer = (argument*)malloc(sizeof(*argpointer));
-
-	cout<<"Done Loading"<<endl;
-	/*//Officially Create Threads
-	pthread_create(&threads[0], NULL, &TrafficLight, (void*) argpointer);
-	for (int i = 1; i<numDirections+1; i++)
-	{
-		pthread_create(&threads[i], NULL, &Sensor, (void*) (argpointer+i-1));
-	}*/
-
-	pthread_create(&threads[0], NULL, &Sign, NULL);
-	for (int i = 1; i<numDirections+1; i++)
-	{
-		argpointer->size=loads[i].size;
-		for (int j=0; j<simulationLength*10; j++)
-		{
-			argpointer->contents[j]=loads[i].contents[j];
 		}
-		pthread_create(&threads[i], NULL, &Direction, (void*) argpointer);
-		printf("Thread: %d launched \n",i);
 	}
+*/
+	for (int direction = 0; direction<numDirections+1; direction++)
+	{
+		argument *victim; victim = (argument*)malloc(sizeof(*victim));
+		//move arguments into the victim
+		if(direction)
+			victim->size=simulationLength*10;
+		else
+			victim->size=0;
+		for (int j=0; j<victim->size; j++)
+			victim->contents[j]=workLoad[direction-1][j];
+
+		int success;
+		if(direction)
+			success = pthread_create(&threads[direction], NULL, &Direction, (void*)victim);
+		else
+			success = pthread_create(&threads[direction], NULL, &Sign, (void*)victim);
+		if(success != 0)
+		{
+            fprintf(stderr,"ERROR: LINE 201: THREAD CREATION");
+		}
+	}
+	cout<<"Number of Threads:"<<numDirections+1;
 
 	statistics yay;
 	yay.dummy=1;
@@ -104,28 +106,17 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 
 void *Direction(void *Load)
 {
-	cout<<"Inside Thread!";
+	//Now to reclaim our Load.
+	int loadSize = ((class argument*) Load)->size;
+	printf("Inside Thread with loadSize: %d \n",loadSize);
 
-	/*clock_t t = ((class TimeandDirection*)arguments)->initialTime;
-	double simulationLength = ((class TimeandDirection*)arguments)->simulationLength;
-	int direction = ((class TimeandDirection*)arguments)->direction;*/
 
-	//Reclaim and Cast appropriate type onto Load
-	int loadSize = ((class argument*)Load)->size;
-
-	printf("Size: %d \n",loadSize);
-	cout<<"Woot"<<endl;
-
-	/*double *loadContents = ((class argument*) Load)->contents;
-	for (int i = 0; i < loadSize; i++)
-	{
-		if(loadContents[i]==-1) break;
-		printf("%G, ",loadContents[i]);
-	}*/
 	return NULL;
 }
 
 void *Sign(void *)
 {
+	//Not showing up? Mild Concern.
+	printf("Look Ma, Imma thread!");
 	return NULL;
 }
