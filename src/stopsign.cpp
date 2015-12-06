@@ -43,12 +43,10 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 		cout<<endl;
 	}
 
-	//We need to construct all of the arguments first, before assigning a pointer to the arguments
-	//1: Create Threads
-	pthread_t threads[numDirections+1];
-
-	//Create Arguments to pass;
+	//Using what worked earlier, and changing names:
 	/*
+	pthread_t threads[numDirections+1];
+	//Create Arguments to pass;
 	TimeandDirection arguments[numDirections+1];
 	for (int i = 0; i<numDirections+1; i++)
 	{
@@ -58,44 +56,31 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 	}
 	TimeandDirection * argpointer = arguments;
 
-	compared with
-
-			vectorpair *victim;
-			victim = (vectorpair*)malloc(sizeof(*victim));
-	*/
-
-	argument loads[numDirections];
-	for (int i = 0; i<numDirections; i++)
-	{
-		loads[i].size=simulationLength*10;
-		for (int j = 0; j<simulationLength*10; j++)
-			{
-				loads[i].contents[j]=workLoad[i][j];
-				cout<<" "<<loads[i].contents[j];
-			}
-		cout<<endl;
-	}
-	argument *argpointer; argpointer = (argument*)malloc(sizeof(*argpointer));
-
-	cout<<"Done Loading"<<endl;
-	/*//Officially Create Threads
+	//Officially Create Threads
 	pthread_create(&threads[0], NULL, &TrafficLight, (void*) argpointer);
 	for (int i = 1; i<numDirections+1; i++)
 	{
 		pthread_create(&threads[i], NULL, &Sensor, (void*) (argpointer+i-1));
-	}*/
+	}
+	 */
 
-	pthread_create(&threads[0], NULL, &Sign, NULL);
+	pthread_t threads[numDirections+1];
+	argument Load[numDirections];
+	for (int i=0; i<numDirections;i++)
+	{
+		Load[i].size=simulationLength*10;
+		for (int j=0; j<Load[i].size; j++)
+			Load[i].contents[j]=workLoad[i][j];
+	}
+	argument * argpointer = Load;
+
+	pthread_create(&threads[0], NULL, &Sign, (void*) argpointer);
 	for (int i = 1; i<numDirections+1; i++)
 	{
-		argpointer->size=loads[i].size;
-		for (int j=0; j<simulationLength*10; j++)
-		{
-			argpointer->contents[j]=loads[i].contents[j];
-		}
-		pthread_create(&threads[i], NULL, &Direction, (void*) argpointer);
-		printf("Thread: %d launched \n",i);
+		pthread_create(&threads[i], NULL, &Direction, (void*) (argpointer+i-1));
+		cout<<"Thread created"<<endl;
 	}
+
 
 	statistics yay;
 	yay.dummy=1;
@@ -106,22 +91,7 @@ void *Direction(void *Load)
 {
 	cout<<"Inside Thread!";
 
-	/*clock_t t = ((class TimeandDirection*)arguments)->initialTime;
-	double simulationLength = ((class TimeandDirection*)arguments)->simulationLength;
-	int direction = ((class TimeandDirection*)arguments)->direction;*/
 
-	//Reclaim and Cast appropriate type onto Load
-	int loadSize = ((class argument*)Load)->size;
-
-	printf("Size: %d \n",loadSize);
-	cout<<"Woot"<<endl;
-
-	/*double *loadContents = ((class argument*) Load)->contents;
-	for (int i = 0; i < loadSize; i++)
-	{
-		if(loadContents[i]==-1) break;
-		printf("%G, ",loadContents[i]);
-	}*/
 	return NULL;
 }
 
