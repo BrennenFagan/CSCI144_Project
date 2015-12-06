@@ -68,6 +68,9 @@
 #include <time.h>
 #include <unistd.h>
 
+//stopsign files
+#include "stopsign.h"
+
 using namespace std;
 
 //Functions and Arguments
@@ -106,41 +109,48 @@ int main() {
 	if(numDirections<1)
 		numDirections = 1;
 
-	//Initialize the shared structures.
-	headOfLines.assign(numDirections,0);
-	carQueues.assign(numDirections, queue<float>());
-
-	//1: Multithreading
-	//Thread 0: Intersection Sensor (Controls Queue)
-	//Threads 1-4: Directional Sensors (Generate Cars, place in Queue)
-	//Direction = 1 if Northbound, 2 if Eastbound, 3 if Southbound, 4 if Westbound
-	pthread_t threads[numDirections+1];
-	//Create Arguments to pass;
-	TimeandDirection arguments[numDirections+1];
-	for (int i = 0; i<numDirections+1; i++)
+	int runmode;
+	cout<<"Please enter 0/1: Stop Sign(0) or Traffic Light(1)";cin>>runmode;
+	if(!runmode)
+		stopsign(numDirections, simulationLength);
+	else
 	{
-		arguments[i].initialTime=t;
-		arguments[i].simulationLength=simulationLength;
-		arguments[i].direction=i;
-	}
-	TimeandDirection * argpointer = arguments;
+		//Initialize the shared structures.
+		headOfLines.assign(numDirections,0);
+		carQueues.assign(numDirections, queue<float>());
 
-	//Officially Create Threads
-	pthread_create(&threads[0], NULL, &TrafficLight, (void*) argpointer);
-	for (int i = 1; i<numDirections+1; i++)
-	{
-		pthread_create(&threads[i], NULL, &Sensor, (void*) (argpointer+i-1));
-	}
+		//1: Multithreading
+		//Thread 0: Intersection Sensor (Controls Queue)
+		//Threads 1-4: Directional Sensors (Generate Cars, place in Queue)
+		//Direction = 1 if Northbound, 2 if Eastbound, 3 if Southbound, 4 if Westbound
+		pthread_t threads[numDirections+1];
+		//Create Arguments to pass;
+		TimeandDirection arguments[numDirections+1];
+		for (int i = 0; i<numDirections+1; i++)
+		{
+			arguments[i].initialTime=t;
+			arguments[i].simulationLength=simulationLength;
+			arguments[i].direction=i;
+		}
+		TimeandDirection * argpointer = arguments;
 
-	//Return from all threads: We wait for all Car Generators to be done before Queue
-	for (int i = 1; i<numDirections+1; i++)
-	{
-		pthread_join(threads[i], NULL);
-	}
-	pthread_join(threads[0],NULL);
+		//Officially Create Threads
+		pthread_create(&threads[0], NULL, &TrafficLight, (void*) argpointer);
+		for (int i = 1; i<numDirections+1; i++)
+		{
+			pthread_create(&threads[i], NULL, &Sensor, (void*) (argpointer+i-1));
+		}
 
-	//	Returns the time taken.
-	cout<<"Time Taken: "<<((float)clock()-t)/CLOCKS_PER_SEC<<" Seconds";
+		//Return from all threads: We wait for all Car Generators to be done before Queue
+		for (int i = 1; i<numDirections+1; i++)
+		{
+			pthread_join(threads[i], NULL);
+		}
+		pthread_join(threads[0],NULL);
+
+		//	Returns the time taken.
+		cout<<"Time Taken: "<<((float)clock()-t)/CLOCKS_PER_SEC<<" Seconds";
+	}
 
 	return 0;
 }

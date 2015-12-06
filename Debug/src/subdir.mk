@@ -4,13 +4,16 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-../src/CSCI144_Project.cpp 
+../src/CSCI144_Project.cpp \
+../src/stopsign.cpp 
 
 OBJS += \
-./src/CSCI144_Project.o 
+./src/CSCI144_Project.o \
+./src/stopsign.o 
 
 CPP_DEPS += \
-./src/CSCI144_Project.d 
+./src/CSCI144_Project.d \
+./src/stopsign.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
