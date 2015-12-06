@@ -13,6 +13,19 @@ class statistics
 public:
 	int dummy;
 };
+
+class argument
+{
+public:
+	int size;
+	double contents[];
+	/*argument(int sz, double cont[]){
+		size = sz;
+		for (int i=0; i<size;i++)
+			contents[i]=cont[i];
+	};*/
+};
+
 statistics stopsign(int numDirections, double simulationLength, double **workLoad);
 
 
