@@ -21,7 +21,7 @@
 
 using namespace std;
 
-statistics stopsign(int numDirections, double simulationLength)
+statistics stopsign(int numDirections, double simulationLength, double* workLoad)
 {
 	cout<<"Architecture works!";
 

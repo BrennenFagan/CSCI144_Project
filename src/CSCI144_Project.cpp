@@ -71,6 +71,10 @@
 //stopsign files
 #include "stopsign.h"
 
+//Workload files
+#include <random>
+#include <map>
+
 using namespace std;
 
 //Functions and Arguments
@@ -110,9 +114,50 @@ int main() {
 		numDirections = 1;
 
 	int runmode;
-	cout<<"Please enter 0/1: Stop Sign(0) or Traffic Light(1)";cin>>runmode;
+	cout<<"Please enter 0/1: Stop Sign(0) or Traffic Light(1): ";cin>>runmode;
+
+	double mean;
+	cout<<"How busy is your intersection on average in cars/second?: ";cin>>mean;
+	double lambda=1/mean;
+
+	//Create workloads: http://stackoverflow.com/questions/11491458/how-to-generate-random-numbers-with-exponential-distribution-with-mean
+
+	default_random_engine generator;
+	exponential_distribution<double> distribution(lambda);
+
+	double workLoad[numDirections][int(simulationLength*10)];
+	//Assuming max of 1 car per second
+	//x by y	1				 2				  3	...	simulationLength
+	//North		car arrival time car arrival time
+	//East
+	//South
+	//West
+	//...
+	//numDirections
+	for (int j = 0; j<numDirections;j++)
+	{
+		double sum=0; int i = 0;
+		while (i<simulationLength*10 && sum<simulationLength*.9) //We can run outside of our time interval. Don't bother once we have. End if we are "close enough"
+		{
+		    double number = distribution(generator);
+		    if (number<simulationLength-sum)
+		    {
+		    	workLoad[j][i]=number;
+		    	cout<<number<<" ";
+		    	sum+=number;
+		    	i++;
+		    }
+		}
+		for (i; i<simulationLength*10;i++) // populate with dummy information
+		{
+			workLoad[j][i] = -1;
+		}
+	    cout<<"Total: "<<sum;
+		cout<<endl;
+	}
+
 	if(!runmode)
-		stopsign(numDirections, simulationLength);
+		stopsign(numDirections, simulationLength, &workLoad[numDirections][int(simulationLength*10)]);
 	else
 	{
 		//Initialize the shared structures.

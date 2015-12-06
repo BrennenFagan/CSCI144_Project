@@ -13,7 +13,7 @@ class statistics
 public:
 	int dummy;
 };
-statistics stopsign(int numDirections, double simulationLength);
+statistics stopsign(int numDirections, double simulationLength, double* workLoad);
 
 
 #endif /* STOPSIGN_H_ */
