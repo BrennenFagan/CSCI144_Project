@@ -96,6 +96,7 @@ public:
 
 vector<int> headOfLines; //Stores the positions of the directions. If (0) then there are no cars. Otherwise, 1, 1st ... n, nth in line.
 vector<queue<float> > carQueues; //place to store ALL THE CARS, sorted by direction, and storing the cars' arrival times.
+
 int backOfLine = 1;
 
 //Locks
@@ -125,7 +126,26 @@ int main() {
 	default_random_engine generator;
 	exponential_distribution<double> distribution(lambda);
 
-	double workLoad[numDirections][int(simulationLength*10)];
+	//From HW 3.1
+	/*
+	A = new int*[rowsA]; //Make A an array of rowsA pointers
+	cout<<"Entries: "<<endl;
+	for (int i=0; i<rowsA; i++)
+	{
+		A[i] = new int[colsA]; //Make each Ai point to an array of colsA entries.
+		for (int j=0; j<colsA; j++)
+			{
+				//Populate A[i][j]
+				int temp; cin>>temp;
+				A[i][j]=temp;
+			}
+	}
+	*/
+
+	double **workLoad;
+	workLoad = new double*[numDirections];
+
+	//double workLoad[numDirections][int(simulationLength*10)];
 	//Assuming max of 1 car per second
 	//x by y	1				 2				  3	...	simulationLength
 	//North		car arrival time car arrival time
@@ -136,6 +156,7 @@ int main() {
 	//numDirections
 	for (int j = 0; j<numDirections;j++)
 	{
+		workLoad[j] = new double[(int)simulationLength*10];
 		double sum=0; int i = 0;
 		while (i<simulationLength*10 && sum<simulationLength*.9) //We can run outside of our time interval. Don't bother once we have. End if we are "close enough"
 		{
@@ -157,7 +178,8 @@ int main() {
 	}
 
 	if(!runmode)
-		stopsign(numDirections, simulationLength, &workLoad[numDirections][int(simulationLength*10)]);
+		stopsign(numDirections, simulationLength, workLoad);
+
 	else
 	{
 		//Initialize the shared structures.
