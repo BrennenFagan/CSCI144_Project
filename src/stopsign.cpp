@@ -88,8 +88,13 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 		if(direction)
 		{
 			//convert array to vector
-			vector<double> LoadRow(workLoad[direction], workLoad[direction]+(simulationLength*10));
-			victim->contents=LoadRow;
+			/*vector<double> LoadRow(workLoad[direction], workLoad[direction]+sizeof workLoad / sizeof workLoad[0]);
+			victim->contents=LoadRow;*/
+			victim->contents.empty();
+			for (int j=0; j<victim->size;j++)
+			{
+				victim->contents[j]=workLoad[direction-1][j];
+			}
 		}
 
 		int success;
@@ -126,6 +131,8 @@ void *Direction(void *Load)
 	}
 	printf("CheckSum: %G \n",checksum);
 
+	//Supposing that it did work.
+	//We need to take the time and, at set intervals, release cars into the queues.
 
 	return NULL;
 }
@@ -134,5 +141,8 @@ void *Sign(void *)
 {
 	//Not showing up? Mild Concern.
 	printf("Look Ma, Imma thread!");
+
+	//Supposing that all else did work.
+	//This thread monitors the queues and releases them in the order of their occurrence.
 	return NULL;
 }
