@@ -79,7 +79,7 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 	int check=0;
 	for (int direction = 0; direction<numDirections+1; direction++)
 	{
-		argument *victim; victim = (argument*)malloc(sizeof(*victim));
+		argument *victim = new argument;
 		//move arguments into the victim
 		if(direction)
 			victim->size=simulationLength*10;
@@ -90,11 +90,12 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 			//convert array to vector
 			/*vector<double> LoadRow(workLoad[direction], workLoad[direction]+sizeof workLoad / sizeof workLoad[0]);
 			victim->contents=LoadRow;*/
-			victim->contents.empty();
+			vector<double> *victimContents = new vector<double> [victim->size];
 			for (int j=0; j<victim->size;j++)
 			{
-				victim->contents[j]=workLoad[direction-1][j];
+				victimContents[j]=workLoad[direction-1][j];
 			}
+			victim->contents=victimContents;
 		}
 
 		int success;
