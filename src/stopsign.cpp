@@ -76,6 +76,7 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 		}
 	}
 */
+	int check=0;
 	for (int direction = 0; direction<numDirections+1; direction++)
 	{
 		argument *victim; victim = (argument*)malloc(sizeof(*victim));
@@ -84,8 +85,12 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 			victim->size=simulationLength*10;
 		else
 			victim->size=0;
-		for (int j=0; j<victim->size; j++)
-			victim->contents[j]=workLoad[direction-1][j];
+		if(direction)
+		{
+			//convert array to vector
+			vector<double> LoadRow(workLoad[direction], workLoad[direction]+(simulationLength*10));
+			victim->contents=LoadRow;
+		}
 
 		int success;
 		if(direction)
@@ -96,8 +101,9 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 		{
             fprintf(stderr,"ERROR: LINE 201: THREAD CREATION");
 		}
+		check-=(success-1);
 	}
-	cout<<"Number of Threads:"<<numDirections+1;
+	cout<<"Number of Threads:"<<check;
 
 	statistics yay;
 	yay.dummy=1;
@@ -109,6 +115,16 @@ void *Direction(void *Load)
 	//Now to reclaim our Load.
 	int loadSize = ((class argument*) Load)->size;
 	printf("Inside Thread with loadSize: %d \n",loadSize);
+
+	//And the contents of course
+	//vector <int> Arow = ((class vectorpair*)vectors)->Arow;
+	vector<double> loadContents = ((class argument*) Load)->contents;
+	double checksum = 0;
+	for (int i = 0; i< loadSize; i++)
+	{
+		checksum+=loadContents[i];
+	}
+	printf("CheckSum: %G \n",checksum);
 
 
 	return NULL;

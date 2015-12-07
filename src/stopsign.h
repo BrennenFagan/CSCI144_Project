@@ -5,8 +5,12 @@
  *      Author: root
  */
 
+
+
 #ifndef STOPSIGN_H_
 #define STOPSIGN_H_
+
+#include<vector>
 
 class statistics
 {
@@ -18,7 +22,7 @@ class argument
 {
 public:
 	int size;
-	double contents[];
+	std::vector<double> contents;
 	/*argument(int sz, double cont[]){
 		size = sz;
 		for (int i=0; i<size;i++)
