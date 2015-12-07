@@ -12,6 +12,19 @@
 
 #include<vector>
 #include<thread>
+#include<future>
+#include <iostream>
+#include <queue>
+
+//Thread Utilities
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <mutex>
+
+//Timing Utilities
+#include <time.h>
+#include <unistd.h>
 
 class statistics
 {
@@ -23,6 +36,7 @@ class argument
 {
 public:
 	int size;
+	int direction;
 	std::vector<double> contents;
 	/*argument(int sz, double cont[]){
 		size = sz;

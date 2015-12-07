@@ -55,18 +55,7 @@
  * 	The stop-lights themselves are run by another system that reads the state of the sensor.
  */
 
-#include <iostream>
-#include <queue>
 
-//Thread Utilities
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <mutex>
-
-//Timing Utilities
-#include <time.h>
-#include <unistd.h>
 
 //stopsign files
 #include "stopsign.h"
@@ -117,9 +106,9 @@ int main() {
 	int runmode;
 	cout<<"Please enter 0/1: Stop Sign(0) or Traffic Light(1): ";cin>>runmode;
 
-	double mean;
-	cout<<"How busy is your intersection on average in cars/second?: ";cin>>mean;
-	double lambda=1/mean;
+	double lambda;
+	cout<<"How busy is your intersection on average in cars/second?: ";cin>>lambda;//mean;
+	//double lambda=1/mean;
 
 	//Create workloads: http://stackoverflow.com/questions/11491458/how-to-generate-random-numbers-with-exponential-distribution-with-mean
 
