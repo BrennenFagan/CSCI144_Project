@@ -126,22 +126,6 @@ int main() {
 	default_random_engine generator;
 	exponential_distribution<double> distribution(lambda);
 
-	//From HW 3.1
-	/*
-	A = new int*[rowsA]; //Make A an array of rowsA pointers
-	cout<<"Entries: "<<endl;
-	for (int i=0; i<rowsA; i++)
-	{
-		A[i] = new int[colsA]; //Make each Ai point to an array of colsA entries.
-		for (int j=0; j<colsA; j++)
-			{
-				//Populate A[i][j]
-				int temp; cin>>temp;
-				A[i][j]=temp;
-			}
-	}
-	*/
-
 	double **workLoad;
 	workLoad = new double*[numDirections];
 

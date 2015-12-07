@@ -11,6 +11,7 @@
 #define STOPSIGN_H_
 
 #include<vector>
+#include<thread>
 
 class statistics
 {
