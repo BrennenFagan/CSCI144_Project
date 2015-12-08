@@ -107,7 +107,7 @@ int main() {
 	cout<<"Please enter 0/1: Stop Sign(0) or Traffic Light(1): ";cin>>runmode;
 
 	double mean =1;
-	cout<<"How busy is your intersection? Enter exponential distribution mean: ";cin>>mean;
+	cout<<"How busy is your intersection? Enter exponential distribution mean (small numbers => more cars): ";cin>>mean;
 	double lambda=1/mean;
 
 	//Create workloads: http://stackoverflow.com/questions/11491458/how-to-generate-random-numbers-with-exponential-distribution-with-mean
@@ -153,10 +153,11 @@ int main() {
 	if(!runmode)
 	{
 		statistics stopSignResults = stopsign(numDirections, simulationLength, workLoad);
-		cout<<"Mean: "<<stopSignResults.mean<<endl;
-		cout<<"Median: "<<stopSignResults.median<<endl;
-		cout<<"Min: "<<stopSignResults.min<<endl;
-		cout<<"Max: "<<stopSignResults.max<<endl;
+		//ALL RETURN VALUES ARE IN CLOCKS, NEED TO BE CONVERTED
+		cout<<"Mean: "<<stopSignResults.mean/CLOCKS_PER_SEC<<endl;
+		cout<<"Median: "<<stopSignResults.median/CLOCKS_PER_SEC<<endl;
+		cout<<"Min: "<<stopSignResults.min/CLOCKS_PER_SEC<<endl;
+		cout<<"Max: "<<stopSignResults.max/CLOCKS_PER_SEC<<endl;
 	}
 
 	else

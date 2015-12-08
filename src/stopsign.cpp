@@ -129,15 +129,17 @@ void *Direction(argument Load)
 	printf("I've a load in my pocket, CheckSum = %G\n",checksum);
 
 	//Retrieve the current time t.
-	clock_t t; t=clock()/CLOCKS_PER_SEC;//Measured in Seconds
+	clock_t t; t=clock();//Measured in Clocks
 
 	//Iterate through all cars.
 	for (int i=0;  i<Load.size;i++)
 	{
+
+		//SAMPLE: printf("Wait time: %Lf \n",((long double)(nowWait-busyWait))/CLOCKS_PER_SEC);
 		//At each car, get the current time, and wait for the current time + the car's double value
-		clock_t nowTime = clock()/CLOCKS_PER_SEC;
-		while(t+Load.contents[i]<nowTime)
-		{nowTime = clock()/CLOCKS_PER_SEC;}
+		clock_t nowTime = clock();
+		while(nowTime<t+Load.contents[i]*CLOCKS_PER_SEC)//NOTE MEASURED IN CLOCKS: While current Time is less than the time to launch, wait.
+		{nowTime = clock();}
 
 		//When the car's time has come, push it to the appropriate CarQueues2[direction] with the current time
 		//We push said current time in order to get the statistics for later.
@@ -160,12 +162,15 @@ void *Direction(argument Load)
 		}
 
 		//Get an accurate time read
-		nowTime = clock()/CLOCKS_PER_SEC;
-		carQueues2[Load.direction].push(nowTime);
+		nowTime = clock();
+		carQueues2[Load.direction].push(nowTime); //NOTE, WE ARE SPECIFICALLY PASSING CLOCKS
+
 		pthread_mutex_unlock( &HeadLock );
 		pthread_mutex_unlock( &LoadLock );
 		pthread_mutex_unlock( &StopSignLock );
-		printf("In you go, Direction: %d! \n", Load.direction);
+		printf("In you go, Direction: %d, time of arrival: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
+		//Refresh the time t, so that the next car launches at the correct time.
+		t=clock();
 		//Once all cars have been pushed (signified by a -1) we break and call it a day for this function.
 		if(i+1==Load.size||Load.contents[i+1]==-1)
 			break;
@@ -211,10 +216,12 @@ statistics Sign(int DailyLoad)
 		clock_t carTimeLoaded =
 				carQueues2[anyoneWaiting].front();
 				carQueues2[anyoneWaiting].pop();
-		clock_t carTimeEnters = clock()/CLOCKS_PER_SEC;
+		clock_t carTimeEnters = clock();
 
 		//...decrement all values...:	currentLoad,	HeadOfLine
 		currentLoad--;
+		pthread_mutex_unlock( &LoadLock );
+
 		//HeadOfLine
 		for(int direction = 0; direction<headOfTraffic2.size();direction++)
 		{
@@ -242,18 +249,24 @@ statistics Sign(int DailyLoad)
 					headOfTraffic2[direction]--;//Move them towards the front of the line.
 			}
 		}
+		pthread_mutex_unlock( &HeadLock );
+		pthread_mutex_unlock( &StopSignLock );
 
 		//It takes 3 seconds for a car to pass through the intersection from a complete stop, which we have since we are simulating a stopsign.
 		printf("Service time: %Lf \n",(long double)(carTimeEnters-carTimeLoaded));
 
-		sleep(3);
+		//sleep(3);//Functionally, we want to wait for 3 seconds, but sleep doesn't appear to effect the actual service time. Hence, we busy wait. Sadness.
+		clock_t busyWait = clock();
+		clock_t nowWait = clock();
+		while((((long double)(nowWait-busyWait))/CLOCKS_PER_SEC)<3)
+		{/*Busy Wait of extreme sadness*/
+			//printf("Wait time: %Lf \n",((long double)(nowWait-busyWait))/CLOCKS_PER_SEC);
+			nowWait = clock();
+
+		}
 
 		timeDifferences.push_back((long double)(carTimeEnters-carTimeLoaded));
 
-		//Release all Locks.
-		pthread_mutex_unlock( &HeadLock );
-		pthread_mutex_unlock( &LoadLock );
-		pthread_mutex_unlock( &StopSignLock );
 
 		//On Pop, we increment the daily load counter
 		carsThrough++;
