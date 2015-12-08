@@ -251,7 +251,36 @@ statistics WRAPPER(int numDirections, double simulationLength, double** workLoad
 
 statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 {
+	bool allCarsThrough = false;
+		//This function monitors the carQueues, while it waits for the dailyLoad to be done.
+		while(!allCarsThrough)
+		{
+			int anyoneWaiting=-1;
+			pthread_mutex_lock( &headLock ); //Request Permission to access HeadOfTraffic
+			for (int direction = 0; direction < headOfTraffic.size(); direction++)
+			{
+				if(headOfTraffic[direction]&&											//If there is anyone waiting in any lane
+						(anyoneWaiting==-1 || 											//AND we have not Detected anyone OR
+								headOfTraffic[direction]<headOfTraffic[anyoneWaiting]))	//This someone has higher (<current) priority
+					anyoneWaiting=direction;											//Assign our direction of interest to them.
+			}
+			pthread_mutex_unlock( &headLock );
+			if(anyoneWaiting==-1)
+				{
+					//Note, may be inefficient to acquire locks, but it is as safe or safer than not doing so.
+					pthread_mutex_lock( &resultLock );
+					//If noone is waiting, we need to check to see if we are done.
+					//All Cars are Through if the number of cars through is greater than or equal to the number of cars expected
+					allCarsThrough=(carsPastIntersection.size()>=DailyLoad);
+					pthread_mutex_unlock( &resultLock );
 
+					if(allCarsThrough) break;
+					else continue; //If we couldn't find anyone, try again.
+				}
+
+		}
+	//Statistics and Results Section////////////////////////////////////////////////////////////
+	return statistics(0,0,0,0);
 }
 
 void *Sensor(argument Load)

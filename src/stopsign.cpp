@@ -248,7 +248,6 @@ statistics Sign(int DailyLoad)
 		{/*Busy Wait of extreme sadness*/
 			//printf("Wait time: %Lf \n",((long double)(nowWait-busyWait))/CLOCKS_PER_SEC);
 			nowWait = clock();
-
 		}
 
 		timeDifferences.push_back((long double)(carTimeEnters-carTimeLoaded));
