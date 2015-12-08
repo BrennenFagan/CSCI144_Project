@@ -59,15 +59,17 @@
 
 //Workload files
 #include <random>
-#include <map>
 
 using namespace std;
+
 
 //Functions and Arguments
 statistics TrafficLight(int DailyLoad);//Based on stopsign.cpp's Sign
 void *Sensor(argument Load); //Based on Direction, but modifying different variables and locks
 statistics WRAPPER(int numDirections, double simulationLength, double** workLoad);// To make implementation somewhat more modular.
 
+
+//Global Variables
 vector<int> headOfTraffic; //Stores the positions of the directions. If (0) then there are no cars. Otherwise, 1, 1st ... n, nth in line.
 vector<queue<clock_t> > carQueues; //place to store ALL THE CARS, sorted by direction, and storing the cars' arrival times.
 vector<long double> carsPastIntersection; //analogous to a more broadly used timeDifferences in stopsign.cpp
@@ -103,7 +105,6 @@ int main() {
 	double lambda=1/mean;
 
 	//Create workloads: http://stackoverflow.com/questions/11491458/how-to-generate-random-numbers-with-exponential-distribution-with-mean
-
 	default_random_engine generator;
 	exponential_distribution<double> distribution(lambda);
 
@@ -143,6 +144,7 @@ int main() {
 	    cout<<"Total: "<<sum;
 		cout<<endl;
 	}
+	//End Workload Creation//////////////////////////////////////////////////////////////////////////////////////////////////
 
 	if(!runmode)
 	{
@@ -255,6 +257,7 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 		//This function monitors the carQueues, while it waits for the dailyLoad to be done.
 		while(!allCarsThrough)
 		{
+			//Determine if Cars waiting at the intersection////////////////////////////////////////////////////////////
 			int anyoneWaiting=-1;
 			pthread_mutex_lock( &headLock ); //Request Permission to access HeadOfTraffic
 			for (int direction = 0; direction < headOfTraffic.size(); direction++)
@@ -277,9 +280,133 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 					if(allCarsThrough) break;
 					else continue; //If we couldn't find anyone, try again.
 				}
+			//Done Determining if Cars waiting//////////////////////////////////////////////////////////////////////////
 
+			//Time to Load Cars through the intersection////////////////////////////////////////////////////////////////
+			//We now know that someone is waiting.
+			//We acquire locks to remove people form the lanes and get them through the intersection.
+			//Acquire in the same order as sensor
+			pthread_mutex_lock( &sensorLock );
+			pthread_mutex_lock( &headLock );
+
+			//I think the timing logic is right, but I am unsure.
+
+			//We wish to release all cars who could make it through the intersection.
+			//By time, that means that they have less than
+			clock_t closeTime = clock();
+			//Plus three seconds to get through the intersection:
+			closeTime+=3*CLOCKS_PER_SEC;
+			//Plus the time to get the last car through the intersection:
+			closeTime+=(50/27+40.5/27)*CLOCKS_PER_SEC;
+			//So that the car in front is guaranteed to get through as well as a car just arriving to trigger the sensor.
+			//Any cars in between also get serviced.
+			//This is the time that we will maintain the locks for.
+
+			//Now we need to transfer any cars
+			for(int cars = 0; cars<carQueues[anyoneWaiting].size(); cars++)
+			{
+				//We check the time of the cars and if they would get through in time.
+				//Recall that values in the Queues of carQueues are in Clocks.
+				if(carQueues[anyoneWaiting].front()<closeTime)
+				{
+					clock_t carTimeLoaded =
+							carQueues[anyoneWaiting].front();
+							carQueues[anyoneWaiting].pop();
+
+							//Acquire the Results lock and push the closingTime-TimeLoaded
+							pthread_mutex_lock( &resultLock );
+							carsPastIntersection.push_back((long double)(closeTime-carTimeLoaded));
+							pthread_mutex_unlock( &resultLock );
+				}
+			}
+
+			//If there is an opposite direction, i.e. 2|numDirections i.e. there are an even number of directions
+			int oppositeDirection = -1;
+			if(carQueues.size()%2==0)
+			{
+				//We check the opposite direction
+				//If anyoneWaiting>half of size, we subtract,
+				//If anyoneWaiting<half of size, we add
+				//In a four way, 0 and 2, 1 and 3
+				//In a six way, 0 and 3, 1 and 4, 2 and 5
+				if(anyoneWaiting>=carQueues.size()/2)
+					oppositeDirection = anyoneWaiting-carQueues.size()/2;
+				else
+					oppositeDirection = anyoneWaiting+carQueues.size()/2;
+				for(int cars = 0; cars<carQueues[oppositeDirection].size(); cars++)
+				{
+					//We check the time of the cars and if they would get through in time.
+					//Recall that values in the Queues of carQueues are in Clocks.
+					if(carQueues[oppositeDirection].front()<closeTime)
+					{
+						clock_t carTimeLoaded =
+								carQueues[oppositeDirection].front();
+								carQueues[oppositeDirection].pop();
+
+								//Acquire the Results lock and push the closingTime-TimeLoaded
+								pthread_mutex_lock( &resultLock );
+								carsPastIntersection.push_back((long double)(closeTime-carTimeLoaded));
+								pthread_mutex_unlock( &resultLock );
+					}
+				}
+			}
+			//End loading cars through the intersection///////////////////////////////////////////////////////////////
+
+			//Update all Lanes////////////////////////////////////////////////////////////////////////////////////////
+			//Almost direct copy from stopsign.cpp's Sign function.
+			for(int direction = 0; direction<headOfTraffic2.size();direction++)
+					{
+						if(direction==anyoneWaiting||direction==oppositeDirection)//If this is the lane we popped from
+						{
+							//Check to see if there are more cars
+							if(carQueues[direction].empty())
+								//If not, then put headOfTraffic to 0.
+								headOfTraffic[direction]=0;
+							else
+								//If so, then put headOfTraffic = max + 1 of all other directions
+							{
+								int max = 0; //We set max to be the value 1 above the maximum value. This tells us when it will be our turn to go.
+								for(int j=0; j<headOfTraffic.size();j++)
+								{
+									if(headOfTraffic[j]>=max)
+										max=headOfTraffic[j]+1;
+								}
+								headOfTraffic[direction]=max;
+							}
+						}
+						else
+						{
+							if(headOfTraffic[direction])//If it has someone waiting at the head of the Line
+								headOfTraffic[direction]--;//Move them towards the front of the line.
+						}
+					}
+			//All Lanes should be updated/////////////////////////////////////////////////////////////////////////////
+
+			//Finish the simulation portion of the timing/////////////////////////////////////////////////////////////
+			//Now we need to ensure that the other threads wait for the cars to actually get through the intersection.
+			//We don't need to wait for the time that we have already waited, so we only check to go the remainder.
+			clock_t nowWait = clock();
+			while( ( (long double) (closeTime-nowWait) ) >0)//If the time left to wait is greater than the current time, continue to wait.
+			{/*Busy Wait of extreme sadness*/
+				nowWait = clock();
+			}
+
+			pthread_mutex_unlock( &headLock );
+			pthread_mutex_unlock( &sensorLock );
 		}
+
 	//Statistics and Results Section////////////////////////////////////////////////////////////
+		//Just to see if everything is working, we're going to just run through and pop everything.
+		pthread_mutex_lock( &resultLock );
+
+		for (int cars = 0; cars<carsPastIntersection.size(); cars++)
+		{
+			long double car =
+					carsPastIntersection.back();
+					carsPastIntersection.pop_back();
+			printf("Car: Response time: %Lf \n", car);
+		}
+		pthread_mutex_unlock( &resultLock );
 	return statistics(0,0,0,0);
 }
 
@@ -339,7 +466,7 @@ void *Sensor(argument Load)
 				nowWait = clock();
 			}
 
-			//And Load into the results
+			//And Load into the results. Remember that this specifically holds the time leaving the intersection - the time of beginning wait.
 			pthread_mutex_lock( &resultLock );
 			carsPastIntersection.push_back((long double)(nowWait-busyWait));
 			pthread_mutex_unlock( &resultLock );
