@@ -22,7 +22,7 @@
 using namespace std;
 
 //Global Variables
-vector< queue<clock_t> > carQueues2;
+vector< queue<time_t> > carQueues2;
 int currentLoad;
 vector<int> headOfTraffic2;
 //if 0, noone in lane
@@ -129,15 +129,15 @@ void *Direction(argument Load)
 	printf("I've a load in my pocket, CheckSum = %G\n",checksum);
 
 	//Retrieve the current time t.
-	clock_t t; t=clock()/CLOCKS_PER_SEC;//Measured in Seconds
+	time_t t; time(&t);//Measured in Seconds
 
 	//Iterate through all cars.
 	for (int i=0;  i<Load.size;i++)
 	{
 		//At each car, get the current time, and wait for the current time + the car's double value
-		clock_t nowTime = clock()/CLOCKS_PER_SEC;
-		while(t+Load.contents[i]<nowTime)
-		{nowTime = clock()/CLOCKS_PER_SEC;}
+		time_t nowTime; time(&nowTime);
+		while(difftime(nowTime,t+Load.contents[i])<0)
+		{time(&nowTime);}
 
 		//When the car's time has come, push it to the appropriate CarQueues2[direction] with the current time
 		//We push said current time in order to get the statistics for later.
@@ -160,7 +160,7 @@ void *Direction(argument Load)
 		}
 
 		//Get an accurate time read
-		nowTime = clock()/CLOCKS_PER_SEC;
+		time(&nowTime);
 		carQueues2[Load.direction].push(nowTime);
 		pthread_mutex_unlock( &HeadLock );
 		pthread_mutex_unlock( &LoadLock );
@@ -208,10 +208,10 @@ statistics Sign(int DailyLoad)
 
 		//We pop the car in the lane with the lowest value...
 		//Recall that anyoneWaiting has the direction of the lowest value
-		clock_t carTimeLoaded =
+		time_t carTimeLoaded =
 				carQueues2[anyoneWaiting].front();
 				carQueues2[anyoneWaiting].pop();
-		clock_t carTimeEnters = clock()/CLOCKS_PER_SEC;
+		time_t carTimeEnters; time(&carTimeEnters);
 
 		//...decrement all values...:	currentLoad,	HeadOfLine
 		currentLoad--;
@@ -244,11 +244,11 @@ statistics Sign(int DailyLoad)
 		}
 
 		//It takes 3 seconds for a car to pass through the intersection from a complete stop, which we have since we are simulating a stopsign.
-		printf("Service time: %Lf \n",(long double)(carTimeEnters-carTimeLoaded));
+		printf("Service time: %Lf \n",(long double)(difftime(carTimeEnters,carTimeLoaded)));
 
 		sleep(3);
 
-		timeDifferences.push_back((long double)(carTimeEnters-carTimeLoaded));
+		timeDifferences.push_back((long double)(difftime(carTimeEnters,carTimeLoaded)));
 
 		//Release all Locks.
 		pthread_mutex_unlock( &HeadLock );
