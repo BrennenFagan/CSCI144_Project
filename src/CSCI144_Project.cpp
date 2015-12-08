@@ -1,9 +1,6 @@
 //============================================================================
 // Name        : CSCI144_Project.cpp
 // Author      : Brennen Fagan
-// Version     :
-// Copyright   : Your copyright notice
-// Description : Hello World in C++, Ansi-style
 //============================================================================
 
 /*
@@ -168,6 +165,9 @@ int main() {
 	else //run both
 	{
 		statistics stopSignResults = stopsign(numDirections, simulationLength, workLoad);
+		//Note that the stats from stopsign do not include the time to cross the intersection.
+		//Hence, we add 3 to any stats we want to compare between the two.
+
 		statistics Results = WRAPPER(numDirections, simulationLength, workLoad);
 	}
 
@@ -233,12 +233,14 @@ statistics WRAPPER(int numDirections, double simulationLength, double** workLoad
 			}
 			//Done Launching Threads////////////////////////////////////////////////////////////
 
+			//Join and collect Results//////////////////////////////////////////////////////////
 			for (int direction = 0; direction<numDirections;direction++)
 			{
 				threads[direction].join();
 			}
 
 			return signalReturn.get();
+			//Returning results of Sim//////////////////////////////////////////////////////////
 }
 
 statistics TrafficLight(int DailyLoad) //of TimeandDirection class
@@ -247,9 +249,10 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 	vector<long double> timeDifferences={};
 
 	int carsThrough=0;
-	//This function monitors the carQueues2, while it waits for the dailyLoad to be done.
+	//This function monitors the carQueues, while it waits for the dailyLoad to be done.
 	while(carsThrough<DailyLoad)
 	{
+		//Detection Section/////////////////////////////////////////////////////////////
 		int anyoneWaiting=-1;
 		pthread_mutex_lock( &headLock ); //Request Permission to access HeadOfTraffic
 		for (int direction = 0; direction < headOfTraffic.size(); direction++)
@@ -273,7 +276,19 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 		pthread_mutex_lock( &sensorLock );
 		pthread_mutex_lock( &headLock );
 
-		//We pop the car in the lane with the lowest value...
+
+		//Business Logic Section//////////////////////////////////////////////////////////
+
+		//We pop the cars in the lane with the lowest value...
+
+		//2 Important notes that essentially cause all of the changes in the Traffic Light
+			//1: We want all cars that can reach the intersection to go.
+				//In order for a car to reach the intersection on time,
+			//2: We want all cars in the "opposite direction", if it exists, to go.
+
+
+		//We also want to let cars pointing in the opposite direction to go.
+		//Hence, we also need to identify the opposite direction. This can only be defined if 2|numDirections
 		//Recall that anyoneWaiting has the direction of the lowest value
 		clock_t carTimeLoaded =
 				carQueues[anyoneWaiting].front();
