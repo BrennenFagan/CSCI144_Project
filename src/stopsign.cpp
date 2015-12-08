@@ -23,7 +23,6 @@ using namespace std;
 
 //Global Variables
 vector< queue<clock_t> > carQueues2;
-int currentLoad;
 vector<int> headOfTraffic2;
 //if 0, noone in lane
 //else, turn order
@@ -35,9 +34,8 @@ statistics Sign(int DailyLoad); //Take no arguments. It's just going to interact
 					//Needs access to each head of line and to record the order of the cars at the front.
 
 //Lock guards carQueues2
-pthread_mutex_t StopSignLock = PTHREAD_MUTEX_INITIALIZER; //CarQueues2
-pthread_mutex_t LoadLock = PTHREAD_MUTEX_INITIALIZER; //CurrentLoad		//Do we need?
-pthread_mutex_t HeadLock = PTHREAD_MUTEX_INITIALIZER; //HeadOfTraffic
+pthread_mutex_t StopSignLock2 = PTHREAD_MUTEX_INITIALIZER; //CarQueues2
+pthread_mutex_t HeadLock2 = PTHREAD_MUTEX_INITIALIZER; //HeadOfTraffic2
 
 
 statistics stopsign(int numDirections, double simulationLength, double** workLoad)
@@ -45,15 +43,11 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 /*	cout<<"Inside stopSign"<<endl;*/
 
 	//Reset all global variables
-	pthread_mutex_lock( &LoadLock );
-	currentLoad=0;
-	pthread_mutex_unlock( &LoadLock );
-
-	pthread_mutex_lock( &HeadLock );
+	pthread_mutex_lock( &HeadLock2 );
 	headOfTraffic2.resize(numDirections);
-	pthread_mutex_unlock( &HeadLock );
+	pthread_mutex_unlock( &HeadLock2 );
 
-	pthread_mutex_lock( &StopSignLock );
+	pthread_mutex_lock( &StopSignLock2 );
 	//Empty existing queues, followed by resizing for appropriate length
 	carQueues2.empty(); carQueues2.resize(numDirections);
 	//For safety, remove anything within the size.
@@ -62,7 +56,7 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 		while(!carQueues2[direction].empty())
 			carQueues2[direction].pop();
 	}
-	pthread_mutex_unlock( &StopSignLock );
+	pthread_mutex_unlock( &StopSignLock2 );
 
 	int DailyLoad = 0;
 	for (int i=0; i<numDirections;i++)
@@ -79,9 +73,9 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 	}
 
 	/*http://stackoverflow.com/questions/7686939/c-simple-return-value-from-stdthread
-int func() { return 1; }
-std::future<int> ret = std::async(&func);
-int i = ret.get();
+	int func() { return 1; }
+	std::future<int> ret = std::async(&func);
+	int i = ret.get();
 	*/
 
 	//Turns out that this function launches a thread as well. In the interest of time, I'm going to leave the spare threads[0];
@@ -145,9 +139,7 @@ void *Direction(argument Load)
 		//We push said current time in order to get the statistics for later.
 
 		pthread_mutex_lock( &StopSignLock );
-		pthread_mutex_lock( &LoadLock );
-		pthread_mutex_lock( &HeadLock );
-		currentLoad++;
+		pthread_mutex_lock( &HeadLock2 );
 
 		//On push, we need to check if(!headOfTraffic[direction]). If that is true, we need to assign it the next largest value of the values specified.
 		if(!headOfTraffic2[Load.direction]) //Head of Traffic is 0
@@ -165,9 +157,8 @@ void *Direction(argument Load)
 		nowTime = clock();
 		carQueues2[Load.direction].push(nowTime); //NOTE, WE ARE SPECIFICALLY PASSING CLOCKS
 
-		pthread_mutex_unlock( &HeadLock );
-		pthread_mutex_unlock( &LoadLock );
-		pthread_mutex_unlock( &StopSignLock );
+		pthread_mutex_unlock( &HeadLock2 );
+		pthread_mutex_unlock( &StopSignLock2 );
 		printf("In you go, Direction: %d, time of arrival: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
 		//Refresh the time t, so that the next car launches at the correct time.
 		t=clock();
@@ -188,7 +179,7 @@ statistics Sign(int DailyLoad)
 	while(carsThrough<DailyLoad)
 	{
 		int anyoneWaiting=-1;
-		pthread_mutex_lock( &HeadLock ); //Request Permission to access HeadOfTraffic
+		pthread_mutex_lock( &HeadLock2 ); //Request Permission to access HeadOfTraffic
 		for (int direction = 0; direction < headOfTraffic2.size(); direction++)
 		{
 			if(headOfTraffic2[direction]&&											//If there is anyone waiting in any lane
@@ -196,7 +187,7 @@ statistics Sign(int DailyLoad)
 							headOfTraffic2[direction]<headOfTraffic2[anyoneWaiting]))	//This someone has higher (<current) priority
 				anyoneWaiting=direction;											//Assign our direction of interest to them.
 		}
-		pthread_mutex_unlock( &HeadLock );
+		pthread_mutex_unlock( &HeadLock2 );
 		if(anyoneWaiting==-1)
 			{
 				usleep(100);
@@ -207,9 +198,8 @@ statistics Sign(int DailyLoad)
 		//We pop the car in the lane with the lowest value, acquire lock, and decrement all values. If there is a car still in the lane, they get max value (size).
 
 		//Acquire all relevant Locks. Note we do this in the same order that we do it in the other function.
-		pthread_mutex_lock( &StopSignLock );
-		pthread_mutex_lock( &LoadLock );
-		pthread_mutex_lock( &HeadLock );
+		pthread_mutex_lock( &StopSignLock2 );
+		pthread_mutex_lock( &HeadLock2 );
 
 		//We pop the car in the lane with the lowest value...
 		//Recall that anyoneWaiting has the direction of the lowest value
@@ -218,11 +208,7 @@ statistics Sign(int DailyLoad)
 				carQueues2[anyoneWaiting].pop();
 		clock_t carTimeEnters = clock();
 
-		//...decrement all values...:	currentLoad,	HeadOfLine
-		currentLoad--;
-		pthread_mutex_unlock( &LoadLock );
-
-		//HeadOfLine
+		//...decrement all values...:	HeadOfLine
 		for(int direction = 0; direction<headOfTraffic2.size();direction++)
 		{
 			if(direction==anyoneWaiting)//If this is the lane we popped from
@@ -249,8 +235,8 @@ statistics Sign(int DailyLoad)
 					headOfTraffic2[direction]--;//Move them towards the front of the line.
 			}
 		}
-		pthread_mutex_unlock( &HeadLock );
-		pthread_mutex_unlock( &StopSignLock );
+		pthread_mutex_unlock( &HeadLock2 );
+		pthread_mutex_unlock( &StopSignLock2 );
 
 		//It takes 3 seconds for a car to pass through the intersection from a complete stop, which we have since we are simulating a stopsign.
 		printf("Service time: %Lf \n",(long double)(carTimeEnters-carTimeLoaded));
