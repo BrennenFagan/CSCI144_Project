@@ -49,7 +49,7 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 
 	pthread_mutex_lock( &StopSignLock2 );
 	//Empty existing queues, followed by resizing for appropriate length
-	carQueues2.empty(); carQueues2.resize(numDirections);
+	carQueues2.resize(numDirections);
 	//For safety, remove anything within the size.
 	for(int direction = 0; direction<numDirections;direction++)
 	{

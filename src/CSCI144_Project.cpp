@@ -70,11 +70,13 @@ statistics WRAPPER(int numDirections, double simulationLength, double** workLoad
 
 vector<int> headOfTraffic; //Stores the positions of the directions. If (0) then there are no cars. Otherwise, 1, 1st ... n, nth in line.
 vector<queue<clock_t> > carQueues; //place to store ALL THE CARS, sorted by direction, and storing the cars' arrival times.
+vector<long double> carsPastIntersection; //analogous to a more broadly used timeDifferences in stopsign.cpp
 
 
 //Locks
 pthread_mutex_t sensorLock = PTHREAD_MUTEX_INITIALIZER;//carQueues
 pthread_mutex_t headLock = PTHREAD_MUTEX_INITIALIZER;//headOfTraffic
+pthread_mutex_t resultLock = PTHREAD_MUTEX_INITIALIZER; //carsPastIntersection
 
 int main() {
 	srand(time(NULL));
@@ -184,7 +186,7 @@ statistics WRAPPER(int numDirections, double simulationLength, double** workLoad
 
 			pthread_mutex_lock( &sensorLock );
 			//Empty existing queues, followed by resizing for appropriate length
-			carQueues.empty(); carQueues.resize(numDirections);
+			carQueues.resize(numDirections);
 			//For safety, remove anything within the size.
 			for(int direction = 0; direction<numDirections;direction++)
 			{
@@ -192,6 +194,10 @@ statistics WRAPPER(int numDirections, double simulationLength, double** workLoad
 					carQueues[direction].pop();
 			}
 			pthread_mutex_unlock( &sensorLock );
+
+			pthread_mutex_lock( &resultLock );
+			carsPastIntersection={};
+			pthread_mutex_unlock( &resultLock );
 			//Finish Reset///////////////////////////////////////////////////////////////////////
 
 			//Determine the total load to expect/////////////////////////////////////////////////
@@ -245,127 +251,7 @@ statistics WRAPPER(int numDirections, double simulationLength, double** workLoad
 
 statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 {
-	printf("Expected Load: %d\n",DailyLoad);
-	vector<long double> timeDifferences={};
 
-	int carsThrough=0;
-	//This function monitors the carQueues, while it waits for the dailyLoad to be done.
-	while(carsThrough<DailyLoad)
-	{
-		//Detection Section/////////////////////////////////////////////////////////////
-		int anyoneWaiting=-1;
-		pthread_mutex_lock( &headLock ); //Request Permission to access HeadOfTraffic
-		for (int direction = 0; direction < headOfTraffic.size(); direction++)
-		{
-			if(headOfTraffic[direction]&&												//If there is anyone waiting in any lane
-					(anyoneWaiting==-1 || 												//AND we have not Detected anyone OR
-							headOfTraffic[direction]<headOfTraffic[anyoneWaiting]))		//This someone has higher (<current) priority
-				anyoneWaiting=direction;												//Assign our direction of interest to them.
-		}
-		pthread_mutex_unlock( &headLock );
-		if(anyoneWaiting==-1)
-			{
-				usleep(100);
-				continue; //If we couldn't find anyone, try again.
-			}
-
-		//We now have the one person at the head of the line.
-		//We pop the car in the lane with the lowest value, acquire lock, and decrement all values. If there is a car still in the lane, they get max value (size).
-
-		//Acquire all relevant Locks. Note we do this in the same order that we do it in the other function.
-		pthread_mutex_lock( &sensorLock );
-		pthread_mutex_lock( &headLock );
-
-
-		//Business Logic Section//////////////////////////////////////////////////////////
-
-		//We pop the cars in the lane with the lowest value...
-
-		//2 Important notes that essentially cause all of the changes in the Traffic Light
-			//1: We want all cars that can reach the intersection to go.
-				//In order for a car to reach the intersection on time,
-			//2: We want all cars in the "opposite direction", if it exists, to go.
-
-
-		//We also want to let cars pointing in the opposite direction to go.
-		//Hence, we also need to identify the opposite direction. This can only be defined if 2|numDirections
-		//Recall that anyoneWaiting has the direction of the lowest value
-		clock_t carTimeLoaded =
-				carQueues[anyoneWaiting].front();
-				carQueues[anyoneWaiting].pop();
-		clock_t carTimeEnters = clock();
-
-		//...decrement all values...:	HeadOfLine
-		for(int direction = 0; direction<headOfTraffic.size();direction++)
-		{
-			if(direction==anyoneWaiting)//If this is the lane we popped from
-			{
-				//Check to see if there are more cars
-				if(carQueues[direction].empty())
-					//If not, then put headOfTraffic to 0.
-					headOfTraffic[direction]=0;
-				else
-					//If so, then put headOfTraffic = max + 1 of all other directions
-				{
-					int max = 0; //We set max to be the value 1 above the maximum value. This tells us when it will be our turn to go.
-					for(int j=0; j<headOfTraffic.size();j++)
-					{
-						if(headOfTraffic[j]>=max)
-							max=headOfTraffic[j]+1;
-					}
-					headOfTraffic[direction]=max;
-				}
-			}
-			else
-			{
-				if(headOfTraffic[direction])//If it has someone waiting at the head of the Line
-					headOfTraffic[direction]--;//Move them towards the front of the line.
-			}
-		}
-		pthread_mutex_unlock( &headLock );
-		pthread_mutex_unlock( &sensorLock );
-
-		//It takes 3 seconds for a car to pass through the intersection from a complete stop, which we have since we are simulating a stopsign.
-		printf("Service time: %Lf \n",(long double)(carTimeEnters-carTimeLoaded));
-
-		//sleep(3);//Functionally, we want to wait for 3 seconds, but sleep doesn't appear to effect the actual service time. Hence, we busy wait. Sadness.
-		clock_t busyWait = clock();
-		clock_t nowWait = clock();
-		while((((long double)(nowWait-busyWait))/CLOCKS_PER_SEC)<3)
-		{/*Busy Wait of extreme sadness*/
-			//printf("Wait time: %Lf \n",((long double)(nowWait-busyWait))/CLOCKS_PER_SEC);
-			nowWait = clock();
-
-		}
-
-		timeDifferences.push_back((long double)(carTimeEnters-carTimeLoaded));
-
-
-		//On Pop, we increment the daily load counter
-		carsThrough++;
-	}
-
-	//We need to perform statistics, such as max, min, mean, and median. Easier to do if sorted.
-	sort(timeDifferences.begin(),timeDifferences.end());
-
-	long double mean=0;//initialize
-
-	long double median=0;
-	if(timeDifferences.size()%2 == 0)//If 2|timeDifferences.size()
-		median = (timeDifferences[timeDifferences.size()/2] + timeDifferences[timeDifferences.size()/2-1]) /2;
-	else							 //If 2|timeDifferences.size()+1
-		median = timeDifferences[timeDifferences.size()/2]; //Abuse of cast to some extent
-
-	long double min=timeDifferences[0];
-	long double max=timeDifferences[timeDifferences.size()-1];
-
-	for(int current = 0; current<timeDifferences.size(); current++)
-	{
-		mean+=timeDifferences[current];
-	}
-	mean/=timeDifferences.size();
-
-	return statistics(mean,median,min,max);
 }
 
 void *Sensor(argument Load)
@@ -392,31 +278,54 @@ void *Sensor(argument Load)
 		while(nowTime<t+Load.contents[i]*CLOCKS_PER_SEC)//NOTE MEASURED IN CLOCKS: While current Time is less than the time to launch, wait.
 		{nowTime = clock();}
 
-		//When the car's time has come, push it to the appropriate CarQueues2[direction] with the current time
+		//When the car's time has come, push it to the appropriate CarQueues[direction] with the current time
 		//We push said current time in order to get the statistics for later.
 
 		pthread_mutex_lock( &sensorLock );
 		pthread_mutex_lock( &headLock );
 
 		//On push, we need to check if(!headOfTraffic[direction]). If that is true, we need to assign it the next largest value of the values specified.
+		int max = 0; //We set max to be the value 1 above the maximum value. This tells us when it will be our turn to go.
 		if(!headOfTraffic[Load.direction]) //Head of Traffic is 0
 		{
-			int max = 0; //We set max to be the value 1 above the maximum value. This tells us when it will be our turn to go.
 			for(int j=0; j<headOfTraffic.size();j++)
 			{
-				if(headOfTraffic[j]>=max)
+				if (headOfTraffic==0)
+					;
+				else if(headOfTraffic[j]>=max)
 					max=headOfTraffic[j]+1;
 			}
-			headOfTraffic[Load.direction]=max;
+			if(max)
+				headOfTraffic[Load.direction]=max;
 		}
+		//IF: After the big test above, max==0, then we know noone else is in the intersection. The car can pass.
+		if(max==0)
+		{
+			//BusyWait for the Car to go through the intersection AT SPEED. 40.5/27 = 1.5
+			clock_t busyWait = clock();
+			clock_t nowWait = clock();
+			while((((long double)(nowWait-busyWait))/CLOCKS_PER_SEC)<1.5)
+			{/*Busy Wait of extreme sadness*/
+				//printf("Wait time: %Lf \n",((long double)(nowWait-busyWait))/CLOCKS_PER_SEC);
+				nowWait = clock();
+			}
 
-		//Get an accurate time read
-		nowTime = clock();
-		carQueues[Load.direction].push(nowTime); //NOTE, WE ARE SPECIFICALLY PASSING CLOCKS
+			//And Load into the results
+			pthread_mutex_lock( &resultLock );
+			carsPastIntersection.push_back((long double)(nowWait-busyWait));
+			pthread_mutex_unlock( &resultLock );
+
+		}
+		else
+		{
+			//Get an accurate time read and pass to the TrafficLight to handle
+			nowTime = clock();
+			carQueues[Load.direction].push(nowTime); //NOTE, WE ARE SPECIFICALLY PASSING CLOCKS
+		}
 
 		pthread_mutex_unlock( &headLock );
 		pthread_mutex_unlock( &sensorLock );
-		printf("In you go, Direction: %d, time of arrival: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
+		//printf("In you go, Direction: %d, time of arrival: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
 		//Refresh the time t, so that the next car launches at the correct time.
 		t=clock();
 		//Once all cars have been pushed (signified by a -1) we break and call it a day for this function.
