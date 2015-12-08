@@ -231,6 +231,8 @@ statistics WRAPPER(int numDirections, double simulationLength, double** workLoad
 			//Launch the TrafficLight thread
 			//Example: future<statistics> signReturn = async(&Sign, DailyLoad);
 			future<statistics> signalReturn = async(&TrafficLight, DailyLoad);
+			//Attempt to force TrafficLight to be scheduled earlier than next threads.
+			sleep(1);
 
 			//Create a Thread for each direction
 			thread threads[numDirections];
@@ -315,7 +317,7 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 			//This is the time that we will maintain the locks for.
 
 			//Now we need to transfer any cars
-			for(int cars = 0; cars<carQueues[anyoneWaiting].size(); cars++)
+			for(int cars = 0; cars<carQueues[anyoneWaiting].size();)//We either decrease the size by one, or we increase the number of cars by one each round.
 			{
 				//We check the time of the cars and if they would get through in time.
 				//Recall that values in the Queues of carQueues are in Clocks.
@@ -331,6 +333,8 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 					pthread_mutex_unlock( &resultLock );
 					printf("Traffic Light: Release time: %Lf!\n",(long double) closeTime/CLOCKS_PER_SEC);
 				}
+				else
+					cars++;
 			}
 
 			//If there is an opposite direction, i.e. 2|numDirections i.e. there are an even number of directions
@@ -346,7 +350,7 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 					oppositeDirection = anyoneWaiting-carQueues.size()/2;
 				else
 					oppositeDirection = anyoneWaiting+carQueues.size()/2;
-				for(int cars = 0; cars<carQueues[oppositeDirection].size(); cars++)
+				for(int cars = 0; cars<carQueues[oppositeDirection].size();)//We either decrease the size by one, or we increase the number of cars by one each round.
 				{
 					//We check the time of the cars and if they would get through in time.
 					//Recall that values in the Queues of carQueues are in Clocks.
@@ -362,6 +366,8 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 						pthread_mutex_unlock( &resultLock );
 						printf("Traffic Light: Release time: %Lf!\n",(long double) closeTime/CLOCKS_PER_SEC);
 					}
+					else
+						cars++;
 				}
 			}
 			//End loading cars through the intersection///////////////////////////////////////////////////////////////
