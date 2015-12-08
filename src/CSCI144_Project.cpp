@@ -182,6 +182,7 @@ int main() {
 		printf("| Metric |     Mean      |    Median     |      Min      |      Max      |\n");
 		printf("| Sign   |%Lf|%Lf|%Lf|%Lf|\n",stopSignResults.mean,stopSignResults.median,stopSignResults.min,stopSignResults.max);
 		printf("| Light  |%Lf|%Lf|%Lf|%Lf|\n",Results.mean,Results.median,Results.min,Results.max);
+		printf("| Li-Si  |%Lf|%Lf|%Lf|%Lf|\n",Results.mean-stopSignResults.mean,Results.median-stopSignResults.median,Results.min-stopSignResults.min,Results.max-stopSignResults.max);
 		printf("|------------------------------------------------------------------------|\n");
 	}
 
@@ -324,11 +325,11 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 							carQueues[anyoneWaiting].front();
 							carQueues[anyoneWaiting].pop();
 
-							//Acquire the Results lock and push the closingTime-TimeLoaded
-							pthread_mutex_lock( &resultLock );
-							carsPastIntersection.push_back((long double)(closeTime-carTimeLoaded));
-							pthread_mutex_unlock( &resultLock );
-							printf("Traffic Light: Release time: %Lf!\n",(long double) closeTime/CLOCKS_PER_SEC);
+					//Acquire the Results lock and push the closingTime-TimeLoaded
+					pthread_mutex_lock( &resultLock );
+					carsPastIntersection.push_back((long double)(closeTime-carTimeLoaded));
+					pthread_mutex_unlock( &resultLock );
+					printf("Traffic Light: Release time: %Lf!\n",(long double) closeTime/CLOCKS_PER_SEC);
 				}
 			}
 
@@ -355,11 +356,11 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 								carQueues[oppositeDirection].front();
 								carQueues[oppositeDirection].pop();
 
-								//Acquire the Results lock and push the closingTime-TimeLoaded
-								pthread_mutex_lock( &resultLock );
-								carsPastIntersection.push_back((long double)(closeTime-carTimeLoaded));
-								pthread_mutex_unlock( &resultLock );
-								printf("Traffic Light: Release time: %Lf!\n",(long double) closeTime/CLOCKS_PER_SEC);
+						//Acquire the Results lock and push the closingTime-TimeLoaded
+						pthread_mutex_lock( &resultLock );
+						carsPastIntersection.push_back((long double)(closeTime-carTimeLoaded));
+						pthread_mutex_unlock( &resultLock );
+						printf("Traffic Light: Release time: %Lf!\n",(long double) closeTime/CLOCKS_PER_SEC);
 					}
 				}
 			}
@@ -368,31 +369,31 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 			//Update all Lanes////////////////////////////////////////////////////////////////////////////////////////
 			//Almost direct copy from stopsign.cpp's Sign function.
 			for(int direction = 0; direction<headOfTraffic.size();direction++)
+			{
+				if(direction==anyoneWaiting||direction==oppositeDirection)//If this is the lane we popped from
+				{
+					//Check to see if there are more cars
+					if(carQueues[direction].empty())
+						//If not, then put headOfTraffic to 0.
+						headOfTraffic[direction]=0;
+					else
+						//If so, then put headOfTraffic = max + 1 of all other directions
 					{
-						if(direction==anyoneWaiting||direction==oppositeDirection)//If this is the lane we popped from
+						int max = 0; //We set max to be the value 1 above the maximum value. This tells us when it will be our turn to go.
+						for(int j=0; j<headOfTraffic.size();j++)
 						{
-							//Check to see if there are more cars
-							if(carQueues[direction].empty())
-								//If not, then put headOfTraffic to 0.
-								headOfTraffic[direction]=0;
-							else
-								//If so, then put headOfTraffic = max + 1 of all other directions
-							{
-								int max = 0; //We set max to be the value 1 above the maximum value. This tells us when it will be our turn to go.
-								for(int j=0; j<headOfTraffic.size();j++)
-								{
-									if(headOfTraffic[j]>=max)
-										max=headOfTraffic[j]+1;
-								}
-								headOfTraffic[direction]=max;
-							}
+							if(headOfTraffic[j]>=max)
+								max=headOfTraffic[j]+1;
 						}
-						else
-						{
-							if(headOfTraffic[direction])//If it has someone waiting at the head of the Line
-								headOfTraffic[direction]--;//Move them towards the front of the line.
-						}
+						headOfTraffic[direction]=max;
 					}
+				}
+				else
+				{
+					if(headOfTraffic[direction])//If it has someone waiting at the head of the Line
+						headOfTraffic[direction]--;//Move them towards the front of the line.
+				}
+			}
 			//All Lanes should be updated/////////////////////////////////////////////////////////////////////////////
 
 			//Finish the simulation portion of the timing/////////////////////////////////////////////////////////////
@@ -411,9 +412,11 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 	//Statistics and Results Section////////////////////////////////////////////////////////////
 		//We need to perform statistics, such as max, min, mean, and median. Easier to do if sorted.
 
+		printf("Performing Sort... \n");
 		pthread_mutex_lock( &resultLock );
 		sort(carsPastIntersection.begin(),carsPastIntersection.end());
 
+		printf("Performing Statistics... \n");
 		long double mean=0;//initialize
 
 		long double median=0;
@@ -484,6 +487,12 @@ void *Sensor(argument Load)
 						if(max)
 							headOfTraffic[Load.direction]=max;
 					}
+			else
+			{
+				//Head of Traffic is some value other than 0 for this lane.
+				//Hence, we SHALL NOT PASS.
+				max = -1;
+			}
 			//If noone is waiting elsewhere
 			if(max==0)
 					{
