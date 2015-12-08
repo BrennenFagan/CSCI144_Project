@@ -10,13 +10,14 @@
 #ifndef STOPSIGN_H_
 #define STOPSIGN_H_
 
-#include<vector>
-#include<thread>
-#include<future>
+#include <vector>
 #include <iostream>
 #include <queue>
+#include <algorithm>
 
 //Thread Utilities
+#include <thread>
+#include <future>
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -29,7 +30,22 @@
 class statistics
 {
 public:
-	int dummy;
+	long double mean;
+	long double median;
+	long double min;
+	long double max;
+
+	statistics(
+				long double mean,
+				long double median,
+				long double min,
+				long double max)
+	{
+		this->mean=mean;
+		this->median=median;
+		this->min=min;
+		this->max=max;
+	}
 };
 
 class argument

@@ -176,6 +176,7 @@ void *Direction(argument Load)
 statistics Sign(int DailyLoad)
 {
 	printf("Expected Load: %d\n",DailyLoad);
+	vector<long double> timeDifferences={};
 
 	int carsThrough=0;
 	//This function monitors the carQueues2, while it waits for the dailyLoad to be done.
@@ -243,9 +244,11 @@ statistics Sign(int DailyLoad)
 		}
 
 		//It takes 3 seconds for a car to pass through the intersection from a complete stop, which we have since we are simulating a stopsign.
-		printf("Service time: %lu \n",carTimeEnters-carTimeLoaded);
+		printf("Service time: %Lf \n",(long double)(carTimeEnters-carTimeLoaded));
 
 		sleep(3);
+
+		timeDifferences.push_back((long double)(carTimeEnters-carTimeLoaded));
 
 		//Release all Locks.
 		pthread_mutex_unlock( &HeadLock );
@@ -256,9 +259,26 @@ statistics Sign(int DailyLoad)
 		carsThrough++;
 	}
 
+	//We need to perform statistics, such as max, min, mean, and median. Easier to do if sorted.
+	sort(timeDifferences.begin(),timeDifferences.end());
 
+	long double mean=0;//initialize
 
+	long double median=0;
+	if(timeDifferences.size()%2 == 0)//If 2|timeDifferences.size()
+		median = (timeDifferences[timeDifferences.size()/2] + timeDifferences[timeDifferences.size()/2-1]) /2;
+	else							 //If 2|timeDifferences.size()+1
+		median = timeDifferences[timeDifferences.size()/2]; //Abuse of cast to some extent
 
-	statistics yay;
+	long double min=timeDifferences[0];
+	long double max=timeDifferences[timeDifferences.size()-1];
+
+	for(int current = 0; current<timeDifferences.size(); current++)
+	{
+		mean+=timeDifferences[current];
+	}
+	mean/=timeDifferences.size();
+
+	statistics yay(mean,median,min,max);
 	return yay;
 }

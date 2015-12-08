@@ -151,7 +151,13 @@ int main() {
 	}
 
 	if(!runmode)
-		stopsign(numDirections, simulationLength, workLoad);
+	{
+		statistics stopSignResults = stopsign(numDirections, simulationLength, workLoad);
+		cout<<"Mean: "<<stopSignResults.mean<<endl;
+		cout<<"Median: "<<stopSignResults.median<<endl;
+		cout<<"Min: "<<stopSignResults.min<<endl;
+		cout<<"Max: "<<stopSignResults.max<<endl;
+	}
 
 	else
 	{
