@@ -120,7 +120,7 @@ void *Direction(argument Load)
 			break;
 		checksum+=Load.contents[i];
 	}
-	printf("I've a load in my pocket, CheckSum = %G\n",checksum);
+	//printf("I've a load in my pocket, CheckSum = %G\n",checksum);
 
 	//Retrieve the current time t.
 	clock_t t; t=clock();//Measured in Clocks
@@ -159,7 +159,7 @@ void *Direction(argument Load)
 
 		pthread_mutex_unlock( &HeadLock2 );
 		pthread_mutex_unlock( &StopSignLock2 );
-		printf("In you go, Direction: %d, time of arrival: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
+		printf("StopSign: Direction: %d, time of arrival: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
 		//Refresh the time t, so that the next car launches at the correct time.
 		t=clock();
 		//Once all cars have been pushed (signified by a -1) we break and call it a day for this function.
@@ -171,7 +171,7 @@ void *Direction(argument Load)
 
 statistics Sign(int DailyLoad)
 {
-	printf("Expected Load: %d\n",DailyLoad);
+	//printf("Expected Load: %d\n",DailyLoad);
 	vector<long double> timeDifferences={};
 
 	int carsThrough=0;

@@ -171,6 +171,10 @@ int main() {
 		statistics stopSignResults = stopsign(numDirections, simulationLength, workLoad);
 		//Note that the stats from stopsign do not include the time to cross the intersection.
 		//Hence, we add 3 to any stats we want to compare between the two.
+		stopSignResults.mean+=3;
+		stopSignResults.median+=3;
+		stopSignResults.min+=3;
+		stopSignResults.max+=3;
 
 		statistics Results = WRAPPER(numDirections, simulationLength, workLoad);
 	}
@@ -354,7 +358,7 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 
 			//Update all Lanes////////////////////////////////////////////////////////////////////////////////////////
 			//Almost direct copy from stopsign.cpp's Sign function.
-			for(int direction = 0; direction<headOfTraffic2.size();direction++)
+			for(int direction = 0; direction<headOfTraffic.size();direction++)
 					{
 						if(direction==anyoneWaiting||direction==oppositeDirection)//If this is the lane we popped from
 						{
@@ -398,8 +402,7 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 	//Statistics and Results Section////////////////////////////////////////////////////////////
 		//Just to see if everything is working, we're going to just run through and pop everything.
 		pthread_mutex_lock( &resultLock );
-
-		for (int cars = 0; cars<carsPastIntersection.size(); cars++)
+		for (int cars = 0; cars<carsPastIntersection.size();)
 		{
 			long double car =
 					carsPastIntersection.back();
@@ -419,7 +422,7 @@ void *Sensor(argument Load)
 			break;
 		checksum+=Load.contents[i];
 	}
-	printf("I've a load in my pocket, CheckSum = %G\n",checksum);
+	//printf("I've a load in my pocket, CheckSum = %G\n",checksum);
 
 	//Retrieve the current time t.
 	clock_t t; t=clock();//Measured in Clocks
@@ -446,7 +449,7 @@ void *Sensor(argument Load)
 		{
 			for(int j=0; j<headOfTraffic.size();j++)
 			{
-				if (headOfTraffic==0)
+				if (headOfTraffic[j]==0)
 					;
 				else if(headOfTraffic[j]>=max)
 					max=headOfTraffic[j]+1;
@@ -471,12 +474,15 @@ void *Sensor(argument Load)
 			carsPastIntersection.push_back((long double)(nowWait-busyWait));
 			pthread_mutex_unlock( &resultLock );
 
+			printf("Traffic Sensor: Direction: %d, time of GO: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
 		}
 		else
 		{
 			//Get an accurate time read and pass to the TrafficLight to handle
 			nowTime = clock();
 			carQueues[Load.direction].push(nowTime); //NOTE, WE ARE SPECIFICALLY PASSING CLOCKS
+
+			printf("Traffic Sensor: Direction: %d, time of WAIT: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
 		}
 
 		pthread_mutex_unlock( &headLock );
