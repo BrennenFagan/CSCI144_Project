@@ -447,18 +447,22 @@ void *Sensor(argument Load)
 
 		if(headLock.try_lock())	//If the headOfTraffic is locked, someone is in the intersection and we need to add ourselves to the list of people to wait.
 		{						//If the headOfTraffic is not locked, there is noone in the intersection and we need to check if we need to wait our turn.
-			if(!headOfTraffic[Load.direction]) //Head of Traffic is 0
+			if(!headOfTraffic[Load.direction]) //Head of Traffic is 0, meaning noone is waiting in our direction
 					{
+						//Check the other directions
 						for(int j=0; j<headOfTraffic.size();j++)
 						{
 							if (headOfTraffic[j]==0)
 								;
-							else if(headOfTraffic[j]>=max)
+							//if someone is waiting there, we now need to wait until after they go.
+							else if(headOfTraffic[j]>=1&&headOfTraffic[j]>=max)
 								max=headOfTraffic[j]+1;
 						}
+						//If we're the first in line and another line has people waiting in it, then we add ourselves behind them.
 						if(max)
 							headOfTraffic[Load.direction]=max;
 					}
+			//If noone is waiting elsewhere
 			if(max==0)
 					{
 						//BusyWait for the Car to go through the intersection AT SPEED. 40.5/27 = 1.5
@@ -493,20 +497,21 @@ void *Sensor(argument Load)
 		else
 		{
 			//We wait to retrieve the lock, and add our car to the waitlist.
-			headLock.lock();
 			if(!headOfTraffic[Load.direction]) //Head of Traffic is 0
 					{
 						for(int j=0; j<headOfTraffic.size();j++)
 						{
 							if (headOfTraffic[j]==0)
 								;
-							else if(headOfTraffic[j]>=max)
+							else if(headOfTraffic[j]>=1&&headOfTraffic[j]>=max)
 								max=headOfTraffic[j]+1;
 						}
+
+						headLock.lock();
 						if(max)
 							headOfTraffic[Load.direction]=max;
+						headLock.unlock();
 					}
-			headLock.unlock();
 
 			//Get an accurate time read and pass to the TrafficLight to handle
 			nowTime = clock();
