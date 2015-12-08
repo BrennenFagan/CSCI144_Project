@@ -24,7 +24,7 @@ using namespace std;
 //Global Variables
 vector< queue<clock_t> > carQueues2;
 int currentLoad;
-vector<int> headOfTraffic;
+vector<int> headOfTraffic2;
 //if 0, noone in lane
 //else, turn order
 //e.g. 1,3,2,4 => release lane 0, then lane 2, then lane 1, then lane 3.
@@ -50,7 +50,7 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 	pthread_mutex_unlock( &LoadLock );
 
 	pthread_mutex_lock( &HeadLock );
-	headOfTraffic.resize(numDirections);
+	headOfTraffic2.resize(numDirections);
 	pthread_mutex_unlock( &HeadLock );
 
 	pthread_mutex_lock( &StopSignLock );
@@ -148,15 +148,15 @@ void *Direction(argument Load)
 		currentLoad++;
 
 		//On push, we need to check if(!headOfTraffic[direction]). If that is true, we need to assign it the next largest value of the values specified.
-		if(!headOfTraffic[Load.direction]) //Head of Traffic is 0
+		if(!headOfTraffic2[Load.direction]) //Head of Traffic is 0
 		{
 			int max = 0; //We set max to be the value 1 above the maximum value. This tells us when it will be our turn to go.
-			for(int j=0; j<headOfTraffic.size();j++)
+			for(int j=0; j<headOfTraffic2.size();j++)
 			{
-				if(headOfTraffic[j]>=max)
-					max=headOfTraffic[j]+1;
+				if(headOfTraffic2[j]>=max)
+					max=headOfTraffic2[j]+1;
 			}
-			headOfTraffic[Load.direction]=max;
+			headOfTraffic2[Load.direction]=max;
 		}
 
 		//Get an accurate time read
@@ -183,11 +183,11 @@ statistics Sign(int DailyLoad)
 	{
 		int anyoneWaiting=-1;
 		pthread_mutex_lock( &HeadLock ); //Request Permission to access HeadOfTraffic
-		for (int direction = 0; direction < headOfTraffic.size(); direction++)
+		for (int direction = 0; direction < headOfTraffic2.size(); direction++)
 		{
-			if(headOfTraffic[direction]&&											//If there is anyone waiting in any lane
+			if(headOfTraffic2[direction]&&											//If there is anyone waiting in any lane
 					(anyoneWaiting==-1 || 											//AND we have not Detected anyone OR
-							headOfTraffic[direction]<headOfTraffic[anyoneWaiting]))	//This someone has higher (<current) priority
+							headOfTraffic2[direction]<headOfTraffic2[anyoneWaiting]))	//This someone has higher (<current) priority
 				anyoneWaiting=direction;											//Assign our direction of interest to them.
 		}
 		pthread_mutex_unlock( &HeadLock );
@@ -207,21 +207,56 @@ statistics Sign(int DailyLoad)
 
 		//We pop the car in the lane with the lowest value...
 		//Recall that anyoneWaiting has the direction of the lowest value
+		clock_t carTimeLoaded =
+				carQueues2[anyoneWaiting].front();
+				carQueues2[anyoneWaiting].pop();
+		clock_t carTimeEnters = clock()/CLOCKS_PER_SEC;
 
+		//...decrement all values...:	currentLoad,	HeadOfLine
+		currentLoad--;
+		//HeadOfLine
+		for(int direction = 0; direction<headOfTraffic2.size();direction++)
+		{
+			if(direction==anyoneWaiting)//If this is the lane we popped from
+			{
+				//Check to see if there are more cars
+				if(carQueues2[direction].empty())
+					//If not, then put headOfTraffic to 0.
+					headOfTraffic2[direction]=0;
+				else
+					//If so, then put headOfTraffic = max + 1 of all other directions
+				{
+					int max = 0; //We set max to be the value 1 above the maximum value. This tells us when it will be our turn to go.
+					for(int j=0; j<headOfTraffic2.size();j++)
+					{
+						if(headOfTraffic2[j]>=max)
+							max=headOfTraffic2[j]+1;
+					}
+					headOfTraffic2[direction]=max;
+				}
+			}
+			else
+			{
+				if(headOfTraffic2[direction])//If it has someone waiting at the head of the Line
+					headOfTraffic2[direction]--;//Move them towards the front of the line.
+			}
+		}
 
-		cout<<"Woot!";
+		//It takes 3 seconds for a car to pass through the intersection from a complete stop, which we have since we are simulating a stopsign.
+		printf("Service time: %lu \n",carTimeEnters-carTimeLoaded);
+
+		sleep(3);
 
 		//Release all Locks.
 		pthread_mutex_unlock( &HeadLock );
 		pthread_mutex_unlock( &LoadLock );
 		pthread_mutex_unlock( &StopSignLock );
 
+		//On Pop, we increment the daily load counter
 		carsThrough++;
 	}
 
-	//On Pop, we increment the daily load.
 
-	//It takes 3 seconds for a car to pass through the intersection from a complete stop, which we have since we are simulating a stopsign.
 
 
 	statistics yay;
