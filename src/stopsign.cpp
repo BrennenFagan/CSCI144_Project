@@ -36,7 +36,7 @@ statistics Sign(int DailyLoad); //Take no arguments. It's just going to interact
 
 //Lock guards carQueues2
 pthread_mutex_t StopSignLock = PTHREAD_MUTEX_INITIALIZER; //CarQueues2
-pthread_mutex_t LoadLock = PTHREAD_MUTEX_INITIALIZER; //CurrentLoad
+pthread_mutex_t LoadLock = PTHREAD_MUTEX_INITIALIZER; //CurrentLoad		//Do we need?
 pthread_mutex_t HeadLock = PTHREAD_MUTEX_INITIALIZER; //HeadOfTraffic
 
 
@@ -48,9 +48,11 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 	pthread_mutex_lock( &LoadLock );
 	currentLoad=0;
 	pthread_mutex_unlock( &LoadLock );
+
 	pthread_mutex_lock( &HeadLock );
 	headOfTraffic.resize(numDirections);
 	pthread_mutex_unlock( &HeadLock );
+
 	pthread_mutex_lock( &StopSignLock );
 	//Empty existing queues, followed by resizing for appropriate length
 	carQueues2.empty(); carQueues2.resize(numDirections);
@@ -81,9 +83,11 @@ int func() { return 1; }
 std::future<int> ret = std::async(&func);
 int i = ret.get();
 	*/
+
+	//Turns out that this function launches a thread as well. In the interest of time, I'm going to leave the spare threads[0];
 	future<statistics> signReturn = async(&Sign, DailyLoad);
 	thread threads[numDirections+1];
-	for (int direction = 0; direction<numDirections+1;direction++)
+	for (int direction = 1; direction<numDirections+1;direction++)
 	{
 		if(direction)
 		{
@@ -104,7 +108,7 @@ int i = ret.get();
 		}
 	}
 
-	for (int direction = 0; direction<numDirections+1;direction++)
+	for (int direction = 1; direction<numDirections+1;direction++)
 	{
 		threads[direction].join();
 	}
@@ -115,14 +119,14 @@ int i = ret.get();
 
 void *Direction(argument Load)
 {
-	/*double checksum=0;
+	double checksum=0;
 	for(int i=0; i<Load.size; i++)
 	{
 		if(Load.contents[i]==-1)
 			break;
 		checksum+=Load.contents[i];
 	}
-	printf("I've a load in my pocket, CheckSum = %G\n",checksum);*/
+	printf("I've a load in my pocket, CheckSum = %G\n",checksum);
 
 	//Retrieve the current time t.
 	clock_t t; t=clock()/CLOCKS_PER_SEC;//Measured in Seconds
@@ -141,7 +145,6 @@ void *Direction(argument Load)
 		pthread_mutex_lock( &StopSignLock );
 		pthread_mutex_lock( &LoadLock );
 		pthread_mutex_lock( &HeadLock );
-		carQueues2[Load.direction].push(nowTime);
 		currentLoad++;
 
 		//On push, we need to check if(!headOfTraffic[direction]). If that is true, we need to assign it the next largest value of the values specified.
@@ -155,6 +158,10 @@ void *Direction(argument Load)
 			}
 			headOfTraffic[Load.direction]=max;
 		}
+
+		//Get an accurate time read
+		nowTime = clock()/CLOCKS_PER_SEC;
+		carQueues2[Load.direction].push(nowTime);
 		pthread_mutex_unlock( &HeadLock );
 		pthread_mutex_unlock( &LoadLock );
 		pthread_mutex_unlock( &StopSignLock );
@@ -163,19 +170,54 @@ void *Direction(argument Load)
 		if(i+1==Load.size||Load.contents[i+1]==-1)
 			break;
 	}
-
-
-
 	return NULL;
 }
 
 statistics Sign(int DailyLoad)
 {
-	/*printf("Look Ma, Imma thread!");*/
+	printf("Expected Load: %d\n",DailyLoad);
 
+	int carsThrough=0;
 	//This function monitors the carQueues2, while it waits for the dailyLoad to be done.
+	while(carsThrough<DailyLoad)
+	{
+		int anyoneWaiting=-1;
+		pthread_mutex_lock( &HeadLock ); //Request Permission to access HeadOfTraffic
+		for (int direction = 0; direction < headOfTraffic.size(); direction++)
+		{
+			if(headOfTraffic[direction]&&											//If there is anyone waiting in any lane
+					(anyoneWaiting==-1 || 											//AND we have not Detected anyone OR
+							headOfTraffic[direction]<headOfTraffic[anyoneWaiting]))	//This someone has higher (<current) priority
+				anyoneWaiting=direction;											//Assign our direction of interest to them.
+		}
+		pthread_mutex_unlock( &HeadLock );
+		if(anyoneWaiting==-1)
+			{
+				usleep(100);
+				continue; //If we couldn't find anyone, try again.
+			}
 
-	//We pop the car in the lane with the lowest value, acquire lock, and decrement all values. If there is a car still in the lane, they get max value (size).
+		//We now have the one person at the head of the line.
+		//We pop the car in the lane with the lowest value, acquire lock, and decrement all values. If there is a car still in the lane, they get max value (size).
+
+		//Acquire all relevant Locks. Note we do this in the same order that we do it in the other function.
+		pthread_mutex_lock( &StopSignLock );
+		pthread_mutex_lock( &LoadLock );
+		pthread_mutex_lock( &HeadLock );
+
+		//We pop the car in the lane with the lowest value...
+		//Recall that anyoneWaiting has the direction of the lowest value
+
+
+		cout<<"Woot!";
+
+		//Release all Locks.
+		pthread_mutex_unlock( &HeadLock );
+		pthread_mutex_unlock( &LoadLock );
+		pthread_mutex_unlock( &StopSignLock );
+
+		carsThrough++;
+	}
 
 	//On Pop, we increment the daily load.
 
