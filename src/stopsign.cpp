@@ -69,7 +69,7 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 			else
 				break;
 		}
-		cout<<endl;
+		//cout<<endl;
 	}
 
 	/*http://stackoverflow.com/questions/7686939/c-simple-return-value-from-stdthread
@@ -138,7 +138,7 @@ void *Direction(argument Load)
 		//When the car's time has come, push it to the appropriate CarQueues2[direction] with the current time
 		//We push said current time in order to get the statistics for later.
 
-		pthread_mutex_lock( &StopSignLock );
+		pthread_mutex_lock( &StopSignLock2 );
 		pthread_mutex_lock( &HeadLock2 );
 
 		//On push, we need to check if(!headOfTraffic[direction]). If that is true, we need to assign it the next largest value of the values specified.
