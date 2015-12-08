@@ -440,11 +440,10 @@ void *Sensor(argument Load)
 		//When the car's time has come, push it to the appropriate CarQueues[direction] with the current time
 		//We push said current time in order to get the statistics for later.
 
-		pthread_mutex_lock( &sensorLock );
-		pthread_mutex_lock( &headLock );
-
 		//On push, we need to check if(!headOfTraffic[direction]). If that is true, we need to assign it the next largest value of the values specified.
 		int max = 0; //We set max to be the value 1 above the maximum value. This tells us when it will be our turn to go.
+
+		pthread_mutex_lock( &headLock );
 		if(!headOfTraffic[Load.direction]) //Head of Traffic is 0
 		{
 			for(int j=0; j<headOfTraffic.size();j++)
@@ -457,6 +456,8 @@ void *Sensor(argument Load)
 			if(max)
 				headOfTraffic[Load.direction]=max;
 		}
+		pthread_mutex_unlock( &headLock );
+
 		//IF: After the big test above, max==0, then we know noone else is in the intersection. The car can pass.
 		if(max==0)
 		{
@@ -480,13 +481,14 @@ void *Sensor(argument Load)
 		{
 			//Get an accurate time read and pass to the TrafficLight to handle
 			nowTime = clock();
+
+			pthread_mutex_lock( &sensorLock );
 			carQueues[Load.direction].push(nowTime); //NOTE, WE ARE SPECIFICALLY PASSING CLOCKS
+			pthread_mutex_unlock( &sensorLock );
 
 			printf("Traffic Sensor: Direction: %d, time of WAIT: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
 		}
 
-		pthread_mutex_unlock( &headLock );
-		pthread_mutex_unlock( &sensorLock );
 		//printf("In you go, Direction: %d, time of arrival: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
 		//Refresh the time t, so that the next car launches at the correct time.
 		t=clock();
