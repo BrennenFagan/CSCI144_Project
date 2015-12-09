@@ -85,27 +85,33 @@ int main() {
 
 	//Simulation Length
 	double simulationLength;
-	cout<<"Car Making Length (in Seconds, non-negative values): ";cin>>simulationLength;
-	if(simulationLength<=0)
+	cout<<"Car Making Length (in Seconds, non-negative values) (0 to quit): ";cin>>simulationLength;
+	if(simulationLength<0)
 		simulationLength=1;
+	else if(simulationLength==0) return 0;
 
 	//Number of Directions
 	int numDirections;
-	cout<<"Number of directions (min: 1, positive whole numbers)?: ";cin>>numDirections;
+	cout<<"Number of directions (min: 1, positive whole numbers)? (0 to quit): ";cin>>numDirections;
 	if(numDirections<1)
 		numDirections = 1;
+	else if(numDirections == 0) return 0;
 
 	//Type of Simulation
 	int runmode = 2;
-	cout<<"Please enter 0/1/2: Stop Sign(0) or Traffic Light(1) or Both(else): ";cin>>runmode;
+	cout<<"Please enter 1/2/3: Stop Sign(1) or Traffic Light(2) or Both(else) (0 to quit): ";cin>>runmode;
+	if(runmode == 0) return 0;
 
 	//Determine Distribution
 	double mean =1;
-	cout<<"How busy is your intersection? Enter exponential distribution mean (small numbers => more cars): ";cin>>mean;
+	cout<<"How busy is your intersection? Enter exponential distribution mean (small numbers => more cars) (0 to quit): ";cin>>mean;
+	if(mean == 0) return 0;
 	double lambda=1/mean;
 
 	//Create workloads: http://stackoverflow.com/questions/11491458/how-to-generate-random-numbers-with-exponential-distribution-with-mean
-	default_random_engine generator;
+	//http://www.cplusplus.com/reference/random/uniform_int_distribution/operator%28%29/
+	unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+	default_random_engine generator(seed);
 	exponential_distribution<double> distribution(lambda);
 
 	double **workLoad;
@@ -146,24 +152,22 @@ int main() {
 	}
 	//End Workload Creation//////////////////////////////////////////////////////////////////////////////////////////////////
 
-	if(!runmode)
+	if(runmode==1)
 	{
 		statistics stopSignResults = stopsign(numDirections, simulationLength, workLoad);
-		//ALL RETURN VALUES ARE IN CLOCKS, NEED TO BE CONVERTED
-		cout<<"Mean: "<<stopSignResults.mean/CLOCKS_PER_SEC<<endl;
-		cout<<"Median: "<<stopSignResults.median/CLOCKS_PER_SEC<<endl;
-		cout<<"Min: "<<stopSignResults.min/CLOCKS_PER_SEC<<endl;
-		cout<<"Max: "<<stopSignResults.max/CLOCKS_PER_SEC<<endl;
+		cout<<"Mean: "<<stopSignResults.mean<<endl;
+		cout<<"Median: "<<stopSignResults.median<<endl;
+		cout<<"Min: "<<stopSignResults.min<<endl;
+		cout<<"Max: "<<stopSignResults.max<<endl;
 	}
 
-	else if(runmode==1)
+	else if(runmode==2)
 	{
 		statistics Results = WRAPPER(numDirections, simulationLength, workLoad);
-		//ALL RETURN VALUES ARE IN CLOCKS, NEED TO BE CONVERTED
-		cout<<"Mean: "<<Results.mean/CLOCKS_PER_SEC<<endl;
-		cout<<"Median: "<<Results.median/CLOCKS_PER_SEC<<endl;
-		cout<<"Min: "<<Results.min/CLOCKS_PER_SEC<<endl;
-		cout<<"Max: "<<Results.max/CLOCKS_PER_SEC<<endl;
+		cout<<"Mean: "<<Results.mean<<endl;
+		cout<<"Median: "<<Results.median<<endl;
+		cout<<"Min: "<<Results.min<<endl;
+		cout<<"Max: "<<Results.max<<endl;
 	}
 
 	else //run both
