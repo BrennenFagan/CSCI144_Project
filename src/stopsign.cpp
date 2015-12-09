@@ -239,7 +239,7 @@ statistics Sign(int DailyLoad)
 		pthread_mutex_unlock( &StopSignLock2 );
 
 		//It takes 3 seconds for a car to pass through the intersection from a complete stop, which we have since we are simulating a stopsign.
-		printf("Service time: %Lf \n",(long double)(carTimeEnters-carTimeLoaded));
+		printf("Service time: %Lf \n",(long double)(carTimeEnters-carTimeLoaded)/CLOCKS_PER_SEC);
 
 		//sleep(3);//Functionally, we want to wait for 3 seconds, but sleep doesn't appear to effect the actual service time. Hence, we busy wait. Sadness.
 		clock_t busyWait = clock();
@@ -276,6 +276,11 @@ statistics Sign(int DailyLoad)
 		mean+=timeDifferences[current];
 	}
 	mean/=timeDifferences.size();
+
+	mean/=CLOCKS_PER_SEC;
+	median/=CLOCKS_PER_SEC;
+	min/=CLOCKS_PER_SEC;
+	max/=CLOCKS_PER_SEC;
 
 	statistics yay(mean,median,min,max);
 	return yay;

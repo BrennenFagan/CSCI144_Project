@@ -85,13 +85,13 @@ int main() {
 
 	//Simulation Length
 	double simulationLength;
-	cout<<"Car Making Length (in Seconds, non-negative): ";cin>>simulationLength;
+	cout<<"Car Making Length (in Seconds, non-negative values): ";cin>>simulationLength;
 	if(simulationLength<=0)
 		simulationLength=1;
 
 	//Number of Directions
 	int numDirections;
-	cout<<"Number of directions (min: 1)?: ";cin>>numDirections;
+	cout<<"Number of directions (min: 1, positive whole numbers)?: ";cin>>numDirections;
 	if(numDirections<1)
 		numDirections = 1;
 
@@ -182,7 +182,7 @@ int main() {
 		printf("| Metric |     Mean      |    Median     |      Min      |      Max      |\n");
 		printf("| Sign   |%Lf|%Lf|%Lf|%Lf|\n",stopSignResults.mean,stopSignResults.median,stopSignResults.min,stopSignResults.max);
 		printf("| Light  |%Lf|%Lf|%Lf|%Lf|\n",Results.mean,Results.median,Results.min,Results.max);
-		printf("| Li-Si  |%Lf|%Lf|%Lf|%Lf|\n",Results.mean-stopSignResults.mean,Results.median-stopSignResults.median,Results.min-stopSignResults.min,Results.max-stopSignResults.max);
+		printf("| Si-Li  |%Lf|%Lf|%Lf|%Lf|\n",stopSignResults.mean-Results.mean,stopSignResults.median-Results.median,stopSignResults.min-Results.min,stopSignResults.max-Results.max);
 		printf("|------------------------------------------------------------------------|\n");
 	}
 
@@ -439,10 +439,15 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 			mean+=carsPastIntersection[current];
 			long double car =
 					carsPastIntersection.back();
-			printf("Car: Response time: %Lf \n", car);
+			printf("Car: Response time: %Lf \n", car/CLOCKS_PER_SEC);
 		}
 		mean/=carsPastIntersection.size();
 		pthread_mutex_unlock( &resultLock );
+
+		mean/=CLOCKS_PER_SEC;
+		median/=CLOCKS_PER_SEC;
+		min/=CLOCKS_PER_SEC;
+		max/=CLOCKS_PER_SEC;
 	return statistics(mean,median,min,max);
 }
 
