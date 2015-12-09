@@ -3,7 +3,9 @@ Class: CSCI 144: Operating Systems.
 Instructor: Dr. Ming Li.
 Date of version: 2015-12-08.
 University: California State University, Fresno.
-Hosting Service
+Hosting Service: GitLab.
+Compiler: Eclipse Mars.
+Language: C++11.
 
 Files:	README.md (This file.)
 	CSCI144_Report.doc (Details of creation and detailed walkthrough of program.)
