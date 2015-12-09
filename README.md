@@ -3,8 +3,11 @@ Class: CSCI 144: Operating Systems.
 Instructor: Dr. Ming Li.
 Date of version: 2015-12-08.
 University: California State University, Fresno.
+Hosting Service
 
-Files: 	CSCI144_Project (Executes.)
+Files:	README.md (This file.)
+	CSCI144_Report.doc (Details of creation and detailed walkthrough of program.)
+	CSCI144_Project (Executes.)
 	/src/CSCI144_Project.cpp (Main simulation and wrapping.)
 	/src/stopsign.h (Some linking declarations and definitions, as well as includes.)
 	/src/stopsign.cpp (Initial implementation under the Stop Sign rule.)
