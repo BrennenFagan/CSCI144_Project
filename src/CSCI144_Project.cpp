@@ -81,8 +81,6 @@ mutex headLock;//headOfTraffic
 pthread_mutex_t resultLock = PTHREAD_MUTEX_INITIALIZER; //carsPastIntersection
 
 int main() {
-	srand(time(NULL));
-
 	//Simulation Length
 	double simulationLength;
 	cout<<"Car Making Length (in Seconds, non-negative values) (0 to quit): ";cin>>simulationLength;
