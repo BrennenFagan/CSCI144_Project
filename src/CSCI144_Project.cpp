@@ -78,7 +78,6 @@ vector<long double> carsPastIntersection; //analogous to a more broadly used tim
 //Locks
 pthread_mutex_t sensorLock = PTHREAD_MUTEX_INITIALIZER;//carQueues
 mutex headLock;//headOfTraffic
-//condition_variable head;//ready to be declared if necessary.
 pthread_mutex_t resultLock = PTHREAD_MUTEX_INITIALIZER; //carsPastIntersection
 
 
