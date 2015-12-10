@@ -274,7 +274,7 @@ statistics WRAPPER(int numDirections, double simulationLength, double** workLoad
 
 statistics TrafficLight(int DailyLoad, bool verbose) //of TimeandDirection class
 {
-	bool allCarsThrough = false; int ReleaseCounter = 0;
+	bool allCarsThrough = false;
 		//This function monitors the carQueues, while it waits for the dailyLoad to be done.
 		while(!allCarsThrough)
 		{
@@ -387,10 +387,10 @@ statistics TrafficLight(int DailyLoad, bool verbose) //of TimeandDirection class
 				if(direction==anyoneWaiting||direction==oppositeDirection)//If this is the lane we popped from
 				{
 					//Check to see if there are more cars
-					if(carQueues[direction].empty()) //if is empty
+					if(carQueues[direction].empty())//if is empty
 						//If not, then put headOfTraffic to 0.
 						headOfTraffic[direction]=0; //Set to 0
-					else
+					else 							//if is not empty
 						//If so, then put headOfTraffic = max + 1 of all other directions
 					{
 						int max = 0; //We set max to be the value 1 above the maximum value. This tells us when it will be our turn to go.
@@ -494,20 +494,17 @@ void *Sensor(argument Load)
 
 		if(headLock.try_lock())	//If the headOfTraffic is locked, someone is in the intersection and we need to add ourselves to the list of people to wait.
 		{						//If the headOfTraffic is not locked, there is noone in the intersection and we need to check if we need to wait our turn.
-			if(!headOfTraffic[Load.direction]) //Head of Traffic is 0, meaning noone is waiting in our direction
+			if(headOfTraffic[Load.direction] == 0) //Head of Traffic is 0, meaning noone is waiting in our direction
 					{
 						//Check the other directions
 						for(int j=0; j<headOfTraffic.size();j++)
 						{
-							if (headOfTraffic[j]==0)
-								;
-							//if someone is waiting there, we now need to wait until after they go.
-							else if(headOfTraffic[j]>=1&&headOfTraffic[j]>=max)
-								max=headOfTraffic[j]+1;
+							if(headOfTraffic[j]>max)
+								max=headOfTraffic[j];
 						}
 						//If we're the first in line and another line has people waiting in it, then we add ourselves behind them.
 						if(max)
-							headOfTraffic[Load.direction]=max;
+							headOfTraffic[Load.direction]=max+1;
 					}
 			else
 			{
