@@ -78,7 +78,9 @@ vector<long double> carsPastIntersection; //analogous to a more broadly used tim
 //Locks
 pthread_mutex_t sensorLock = PTHREAD_MUTEX_INITIALIZER;//carQueues
 mutex headLock;//headOfTraffic
+//condition_variable head;//ready to be declared if necessary.
 pthread_mutex_t resultLock = PTHREAD_MUTEX_INITIALIZER; //carsPastIntersection
+
 
 int main() {
 	//Simulation Length
@@ -489,88 +491,82 @@ void *Sensor(argument Load)
 		//When the car's time has come, push it to the appropriate CarQueues[direction] with the current time
 		//We push said current time in order to get the statistics for later.
 
-		//On push, we need to check if(!headOfTraffic[direction]). If that is true, we need to assign it the next largest value of the values specified.
-		int max = 0; //We set max to be the value 1 above the maximum value. This tells us when it will be our turn to go.
+		//Critical Section/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//So we need to check if we are waiting, or if we are going.
 
-		if(headLock.try_lock())	//If the headOfTraffic is locked, someone is in the intersection and we need to add ourselves to the list of people to wait.
-		{						//If the headOfTraffic is not locked, there is noone in the intersection and we need to check if we need to wait our turn.
-			if(headOfTraffic[Load.direction] == 0) //Head of Traffic is 0, meaning noone is waiting in our direction
-					{
-						//Check the other directions
-						for(int j=0; j<headOfTraffic.size();j++)
-						{
-							if(headOfTraffic[j]>max)
-								max=headOfTraffic[j];
-						}
-						//If we're the first in line and another line has people waiting in it, then we add ourselves behind them.
-						if(max)
-							headOfTraffic[Load.direction]=max+1;
-					}
-			else
-			{
-				//Head of Traffic is some value other than 0 for this lane.
-				//Hence, we SHALL NOT PASS.
-				max = -1;
+		//We go if noone is in the intersection
+		//We wait if someone is in the intersection OR if someone else is waiting.
+
+		int max = 0;
+
+		if(headLock.try_lock())	//By definition, if we can lock, noone else is in the intersection. We MIGHT need to wait.
+		{
+			if(headOfTraffic[Load.direction] == 0) 	//If noone is waiting in our direction
+			{										//Check the other directions
+				for(int j=0; j<headOfTraffic.size();j++)
+				{
+					if(headOfTraffic[j]>max)
+						max=headOfTraffic[j];
+				}
 			}
-			//If noone is waiting elsewhere
-			if(max==0)
-					{
-						printf("Traffic Sensor: Direction: %d, time of GO: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
-						//BusyWait for the Car to go through the intersection AT SPEED. 40.5/27 = 1.5
-						clock_t nowWait = clock();
-						while( (long double) (nowWait<1.5*CLOCKS_PER_SEC+nowTime) )
-						{/*Busy Wait of extreme sadness*/
-							//printf("Wait time: %Lf \n",((long double)(nowWait-busyWait))/CLOCKS_PER_SEC);
-							nowWait = clock();
-						}
 
-						//And Load into the results. Remember that this specifically holds the time leaving the intersection - the time of beginning wait.
-						pthread_mutex_lock( &resultLock );
-						carsPastIntersection.push_back((long double)(nowWait-nowTime));
-						pthread_mutex_unlock( &resultLock );
+			if(headOfTraffic[Load.direction] == 0 && max == 0) //We can only go if noone is waiting in front of us AND noone is waiting elsewhere
+			{
+				printf("Traffic Sensor: Direction: %d, time of GO: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
+				//BusyWait for the Car to go through the intersection AT SPEED. 40.5/27 = 1.5
+				clock_t nowWait = clock();
+				while( (long double) (nowWait<1.5*CLOCKS_PER_SEC+nowTime) )
+				{nowWait = clock();}
 
-					}
-					else
-					{
-						//Get an accurate time read and pass to the TrafficLight to handle
-						nowTime = clock();
+				//And Load into the results. Remember that this specifically holds the time leaving the intersection - the time of beginning wait.
+				pthread_mutex_lock( &resultLock );
+				carsPastIntersection.push_back((long double)(nowWait-nowTime));
+				pthread_mutex_unlock( &resultLock );
 
-						pthread_mutex_lock( &sensorLock );
-						carQueues[Load.direction].push(nowTime); //NOTE, WE ARE SPECIFICALLY PASSING CLOCKS
-						pthread_mutex_unlock( &sensorLock );
+			}
 
-						printf("Traffic Sensor: Direction: %d, time of WAIT: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
-					}
+			else //We need to wait because either someone is waiting in front of us or else where. We check.
+			{
+				if(headOfTraffic[Load.direction] == 0) //Noone waiting in front of us.
+					headOfTraffic[Load.direction] = max+1;
+
+				//Now we add ourselves to the wait list.
+				//Get an accurate time read and pass to the TrafficLight to handle
+				nowTime = clock();
+				pthread_mutex_lock( &sensorLock );
+				carQueues[Load.direction].push(nowTime); //NOTE, WE ARE SPECIFICALLY PASSING CLOCKS
+				pthread_mutex_unlock( &sensorLock );
+				printf("Traffic Sensor: Direction: %d, time of WAIT: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
+			}
 			headLock.unlock();
 		}
-		else
+		else					//Someone must have been in the intersection, so we need to wait.
 		{
-			//Since we know we are waiting, our max is at least 1
-			max=1;
-			//We wait to retrieve the lock, and add our car to the waitlist.
-			if(!headOfTraffic[Load.direction]) //Head of Traffic is 0
-					{
-						for(int j=0; j<headOfTraffic.size();j++)
-						{
-							if (headOfTraffic[j]==0)
-								;
-							else if(headOfTraffic[j]>=max)
-								max=headOfTraffic[j]+1;
-						}
-
-						headLock.lock();
-						headOfTraffic[Load.direction]=max;
-						headLock.unlock();
-					}
-
-			//Get an accurate time read and pass to the TrafficLight to handle
+			//Push our car into the queue, then we'll add ourselves to the end of the line.
 			nowTime = clock();
 			pthread_mutex_lock( &sensorLock );
 			carQueues[Load.direction].push(nowTime); //NOTE, WE ARE SPECIFICALLY PASSING CLOCKS
 			pthread_mutex_unlock( &sensorLock );
-
 			printf("Traffic Sensor: Direction: %d, time of WAIT: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);
+
+
+			if(headOfTraffic[Load.direction] == 0) 	//If noone is waiting in our direction, we need to find out who we are waiting behind.
+			{
+				headLock.lock();
+				//Check the other directions
+				for(int j=0; j<headOfTraffic.size();j++)
+				{
+					if(headOfTraffic[j]>max)
+						max=headOfTraffic[j];
+				}
+				headOfTraffic[Load.direction]=max+1;
+				headLock.unlock();
+			}
+			//Otherwise, we don't need to worry about putting ourselves at the head of the line.
+
 		}
+
+		//End Critical Section/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 		//printf("In you go, Direction: %d, time of arrival: %Lf! \n", Load.direction,(long double) nowTime/CLOCKS_PER_SEC);

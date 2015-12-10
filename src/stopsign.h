@@ -4,9 +4,6 @@
  *  Created on: Dec 5, 2015
  *      Author: root
  */
-
-
-
 #ifndef STOPSIGN_H_
 #define STOPSIGN_H_
 
@@ -22,6 +19,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <mutex>
+#include <condition_variable>
 
 //Timing Utilities
 #include <time.h>

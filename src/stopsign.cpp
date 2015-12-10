@@ -6,19 +6,6 @@
  */
 #include "stopsign.h"
 
-#include <iostream>
-#include <queue>
-
-//Thread Utilities
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <mutex>
-
-//Timing Utilities
-#include <time.h>
-#include <unistd.h>
-
 using namespace std;
 
 //Global Variables
