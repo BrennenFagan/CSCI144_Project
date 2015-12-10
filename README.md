@@ -1,7 +1,7 @@
 Author: Brennen Fagan.
 Class: CSCI 144: Operating Systems.
 Instructor: Dr. Ming Li.
-Date of version: 2015-12-08.
+Date of version: 2015-12-10.
 University: California State University, Fresno.
 Hosting Service: GitLab.
 Compiler: Eclipse Mars.
@@ -24,5 +24,5 @@ Run Details: While in the directory use the command
 	At any time during setup, enter a 0 in a field to exit. Alternatively, you may use Ctrl+C to force a quit at any time.
 
 Known Issues:
-	1. Sometimes the traffic light function busy spins. This must happen before line 419 in CSCI144_Project.cpp, but after resolving cars. Cause is unknown and does not always occur, even if same parameters are provided.
+	1. Sometimes the traffic light function busy spins. This occurs due to not all cars arriving in the finished vector: carsPastInterSection. Cause still undetermined. It has been noted that the other threads appear to have stopped at this time.
 	2. The computer scheduler schedules the TrafficLight and Sign functions last, despite initializing them first. As such, all cars end up loaded before these functions really begin running. Solutions welcome!

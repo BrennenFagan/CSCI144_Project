@@ -64,9 +64,9 @@ using namespace std;
 
 
 //Functions and Arguments
-statistics TrafficLight(int DailyLoad);//Based on stopsign.cpp's Sign
+statistics TrafficLight(int DailyLoad, bool verbose);//Based on stopsign.cpp's Sign
 void *Sensor(argument Load); //Based on Direction, but modifying different variables and locks
-statistics WRAPPER(int numDirections, double simulationLength, double** workLoad);// To make implementation somewhat more modular.
+statistics WRAPPER(int numDirections, double simulationLength, double** workLoad, bool verbose);// To make implementation somewhat more modular.
 
 
 //Global Variables
@@ -96,13 +96,14 @@ int main() {
 	else if(numDirections == 0) return 0;
 
 	//Type of Simulation
-	int runmode = 2;
-	cout<<"Please enter 1/2/3: Stop Sign(1) or Traffic Light(2) or Both(else) (0 to quit): ";cin>>runmode;
+	int runmode = 2; bool verbose = false;
+	cout<<"Please enter 1/2/3/4: Stop Sign(1), Traffic Light(2), Verbose Both(3), or Both(else) (0 to quit): ";cin>>runmode;
 	if(runmode == 0) return 0;
+	else if(runmode == 3) verbose = true;
 
 	//Determine Distribution
 	double mean =1;
-	cout<<"How busy is your intersection? Enter exponential distribution mean (small numbers => more cars) (0 to quit): ";cin>>mean;
+	cout<<"How busy is your intersection? Enter exponential distribution mean (small numbers => smaller time between cars) (0 to quit): ";cin>>mean;
 	if(mean == 0) return 0;
 	double lambda=1/mean;
 
@@ -127,6 +128,7 @@ int main() {
 
 	for (int j = 0; j<numDirections;j++)
 	{
+		cout<<"Lane: "<<j<<" ";
 		workLoad[j] = new double[(int)simulationLength*10];
 		double sum=0; int i = 0;
 		while (i<simulationLength*10 && sum<simulationLength*.9)
@@ -145,14 +147,14 @@ int main() {
 		{
 			workLoad[j][i] = -1;
 		}
-	    cout<<"Total: "<<sum;
+	    if(verbose) cout<<"Total: "<<sum;
 		cout<<endl;
 	}
 	//End Workload Creation//////////////////////////////////////////////////////////////////////////////////////////////////
 
 	if(runmode==1)
 	{
-		statistics stopSignResults = stopsign(numDirections, simulationLength, workLoad);
+		statistics stopSignResults = stopsign(numDirections, simulationLength, workLoad,verbose);
 		cout<<"Mean: "<<stopSignResults.mean<<endl;
 		cout<<"Median: "<<stopSignResults.median<<endl;
 		cout<<"Min: "<<stopSignResults.min<<endl;
@@ -161,7 +163,7 @@ int main() {
 
 	else if(runmode==2)
 	{
-		statistics Results = WRAPPER(numDirections, simulationLength, workLoad);
+		statistics Results = WRAPPER(numDirections, simulationLength, workLoad, verbose);
 		cout<<"Mean: "<<Results.mean<<endl;
 		cout<<"Median: "<<Results.median<<endl;
 		cout<<"Min: "<<Results.min<<endl;
@@ -170,7 +172,7 @@ int main() {
 
 	else //run both
 	{
-		statistics stopSignResults = stopsign(numDirections, simulationLength, workLoad);
+		statistics stopSignResults = stopsign(numDirections, simulationLength, workLoad, verbose);
 		//Note that the stats from stopsign do not include the time to cross the intersection.
 		//Hence, we add 3 to any stats we want to compare between the two.
 		stopSignResults.mean+=3;
@@ -178,20 +180,20 @@ int main() {
 		stopSignResults.min+=3;
 		stopSignResults.max+=3;
 
-		statistics Results = WRAPPER(numDirections, simulationLength, workLoad);
+		statistics Results = WRAPPER(numDirections, simulationLength, workLoad, verbose);
 
 		printf("|------------------------------------------------------------------------|\n");
 		printf("| Metric |     Mean      |    Median     |      Min      |      Max      |\n");
-		printf("| Sign   |%Lf|%Lf|%Lf|%Lf|\n",stopSignResults.mean,stopSignResults.median,stopSignResults.min,stopSignResults.max);
-		printf("| Light  |%Lf|%Lf|%Lf|%Lf|\n",Results.mean,Results.median,Results.min,Results.max);
-		printf("| Si-Li  |%Lf|%Lf|%Lf|%Lf|\n",stopSignResults.mean-Results.mean,stopSignResults.median-Results.median,stopSignResults.min-Results.min,stopSignResults.max-Results.max);
+		printf("| Sign   |%12.12Lf|%12.12Lf|%13.13Lf|%12.12Lf|\n",stopSignResults.mean,stopSignResults.median,stopSignResults.min,stopSignResults.max);
+		printf("| Light  |%12.12Lf|%12.12Lf|%13.13Lf|%12.12Lf|\n",Results.mean,Results.median,Results.min,Results.max);
+		printf("| Si-Li  |%12.12Lf|%12.12Lf|%13.13Lf|%12.12Lf|\n",stopSignResults.mean-Results.mean,stopSignResults.median-Results.median,stopSignResults.min-Results.min,stopSignResults.max-Results.max);
 		printf("|------------------------------------------------------------------------|\n");
 	}
 
 	return 0;
 }
 
-statistics WRAPPER(int numDirections, double simulationLength, double** workLoad)
+statistics WRAPPER(int numDirections, double simulationLength, double** workLoad, bool verbose)
 {
 	//Reset all global variables//////////////////////////////////////////////////////////
 
@@ -232,7 +234,7 @@ statistics WRAPPER(int numDirections, double simulationLength, double** workLoad
 			//Begin Multithreading///////////////////////////////////////////////////////////////
 			//Launch the TrafficLight thread
 			//Example: future<statistics> signReturn = async(&Sign, DailyLoad);
-			future<statistics> signalReturn = async(&TrafficLight, DailyLoad);
+			future<statistics> signalReturn = async(&TrafficLight, DailyLoad, verbose);
 			//Attempt to force TrafficLight to be scheduled earlier than next threads.
 			sleep(1);
 
@@ -241,7 +243,7 @@ statistics WRAPPER(int numDirections, double simulationLength, double** workLoad
 			for (int direction = 0; direction<numDirections; direction++)
 			{
 				//create each thread's load
-				argument load; load.size = simulationLength*10;
+				argument load; load.size = simulationLength*10; load.verbose=verbose;
 				load.direction=direction;
 				vector<double>loadContents(load.size,-1);
 				for (int j=0; j<load.size; j++)
@@ -260,13 +262,14 @@ statistics WRAPPER(int numDirections, double simulationLength, double** workLoad
 			for (int direction = 0; direction<numDirections;direction++)
 			{
 				threads[direction].join();
+				if(verbose) printf("Thread %d has been joined. \n",direction);
 			}
 
 			return signalReturn.get();
 			//Returning results of Sim//////////////////////////////////////////////////////////
 }
 
-statistics TrafficLight(int DailyLoad) //of TimeandDirection class
+statistics TrafficLight(int DailyLoad, bool verbose) //of TimeandDirection class
 {
 	bool allCarsThrough = false;
 		//This function monitors the carQueues, while it waits for the dailyLoad to be done.
@@ -317,7 +320,7 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 			//So that the car in front is guaranteed to get through as well as a car just arriving to trigger the sensor.
 			//Any cars in between also get serviced.
 			//This is the time that we will maintain the locks for.
-
+			if(!verbose) printf("Traffic Light: Release time: %Lf!\n",(long double) closeTime/CLOCKS_PER_SEC);
 			//Now we need to transfer any cars
 			for(int cars = 0; cars<carQueues[anyoneWaiting].size();)//We either decrease the size by one, or we increase the number of cars by one each round.
 			{
@@ -333,7 +336,7 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 					pthread_mutex_lock( &resultLock );
 					carsPastIntersection.push_back((long double)(closeTime-carTimeLoaded));
 					pthread_mutex_unlock( &resultLock );
-					printf("Traffic Light: Release time: %Lf!\n",(long double) closeTime/CLOCKS_PER_SEC);
+					if(verbose) printf("Traffic Light: Release time: %Lf!\n",(long double) closeTime/CLOCKS_PER_SEC);
 				}
 				else
 					cars++;
@@ -366,7 +369,7 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 						pthread_mutex_lock( &resultLock );
 						carsPastIntersection.push_back((long double)(closeTime-carTimeLoaded));
 						pthread_mutex_unlock( &resultLock );
-						printf("Traffic Light: Release time: %Lf!\n",(long double) closeTime/CLOCKS_PER_SEC);
+						if(verbose) printf("Traffic Light: Release time: %Lf!\n",(long double) closeTime/CLOCKS_PER_SEC);
 					}
 					else
 						cars++;
@@ -420,11 +423,11 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 	//Statistics and Results Section////////////////////////////////////////////////////////////
 		//We need to perform statistics, such as max, min, mean, and median. Easier to do if sorted.
 
-		printf("Performing Sort... \n");
+		if(verbose) printf("Performing Sort... \n");
 		pthread_mutex_lock( &resultLock );
 		sort(carsPastIntersection.begin(),carsPastIntersection.end());
 
-		printf("Performing Statistics... \n");
+		if(verbose) printf("Performing Statistics... \n");
 		long double mean=0;//initialize
 
 		long double median=0;
@@ -441,7 +444,7 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 			mean+=carsPastIntersection[current];
 			long double car =
 					carsPastIntersection.back();
-			printf("Car: Response time: %Lf \n", car/CLOCKS_PER_SEC);
+			if(verbose) printf("Car: Response time: %Lf \n", car/CLOCKS_PER_SEC);
 		}
 		mean/=carsPastIntersection.size();
 		pthread_mutex_unlock( &resultLock );
@@ -455,14 +458,17 @@ statistics TrafficLight(int DailyLoad) //of TimeandDirection class
 
 void *Sensor(argument Load)
 {
-	double checksum=0;
-	for(int i=0; i<Load.size; i++)
+	if(Load.verbose)
 	{
-		if(Load.contents[i]==-1)
-			break;
-		checksum+=Load.contents[i];
+		double checksum=0;
+		for(int i=0; i<Load.size; i++)
+		{
+			if(Load.contents[i]==-1)
+				break;
+			checksum+=Load.contents[i];
+		}
+		printf("CheckSum = %G\n",checksum);
 	}
-	//printf("I've a load in my pocket, CheckSum = %G\n",checksum);
 
 	//Retrieve the current time t.
 	clock_t t; t=clock();//Measured in Clocks

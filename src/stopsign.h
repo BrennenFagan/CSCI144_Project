@@ -54,6 +54,7 @@ public:
 	int size;
 	int direction;
 	std::vector<double> contents;
+	bool verbose;
 	/*argument(int sz, double cont[]){
 		size = sz;
 		for (int i=0; i<size;i++)
@@ -61,7 +62,7 @@ public:
 	};*/
 };
 
-statistics stopsign(int numDirections, double simulationLength, double **workLoad);
+statistics stopsign(int numDirections, double simulationLength, double **workLoad, bool verbose);
 
 
 #endif /* STOPSIGN_H_ */

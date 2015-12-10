@@ -38,7 +38,7 @@ pthread_mutex_t StopSignLock2 = PTHREAD_MUTEX_INITIALIZER; //CarQueues2
 pthread_mutex_t HeadLock2 = PTHREAD_MUTEX_INITIALIZER; //HeadOfTraffic2
 
 
-statistics stopsign(int numDirections, double simulationLength, double** workLoad)
+statistics stopsign(int numDirections, double simulationLength, double** workLoad, bool verbose)
 {
 /*	cout<<"Inside stopSign"<<endl;*/
 
@@ -85,7 +85,7 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 	{
 		if(direction)
 		{
-			argument load; load.size = simulationLength*10;
+			argument load; load.size = simulationLength*10; load.verbose=verbose;
 			load.direction=direction-1;
 			vector<double>loadContents(load.size,-1);
 			for (int j=0; j<load.size; j++)
@@ -113,14 +113,17 @@ statistics stopsign(int numDirections, double simulationLength, double** workLoa
 
 void *Direction(argument Load)
 {
-	double checksum=0;
-	for(int i=0; i<Load.size; i++)
+	if(Load.verbose)
 	{
-		if(Load.contents[i]==-1)
-			break;
-		checksum+=Load.contents[i];
+		double checksum=0;
+		for(int i=0; i<Load.size; i++)
+		{
+			if(Load.contents[i]==-1)
+				break;
+			checksum+=Load.contents[i];
+		}
+		printf("CheckSum = %G\n",checksum);
 	}
-	//printf("I've a load in my pocket, CheckSum = %G\n",checksum);
 
 	//Retrieve the current time t.
 	clock_t t; t=clock();//Measured in Clocks
@@ -190,7 +193,6 @@ statistics Sign(int DailyLoad)
 		pthread_mutex_unlock( &HeadLock2 );
 		if(anyoneWaiting==-1)
 			{
-				usleep(100);
 				continue; //If we couldn't find anyone, try again.
 			}
 
