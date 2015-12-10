@@ -128,7 +128,7 @@ int main() {
 
 	for (int j = 0; j<numDirections;j++)
 	{
-		cout<<"Lane: "<<j<<" ";
+		cout<<"Lane: "<<j<<": ";
 		workLoad[j] = new double[(int)simulationLength*10];
 		double sum=0; int i = 0;
 		while (i<simulationLength*10 && sum<simulationLength*.9)
