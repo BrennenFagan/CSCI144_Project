@@ -126,10 +126,11 @@ int main() {
 	//...
 	//numDirections
 
+	int totalNumberCars=0;
 	for (int j = 0; j<numDirections;j++)
 	{
 		cout<<"Lane: "<<j<<": ";
-		workLoad[j] = new double[(int)simulationLength*10];
+		workLoad[j] = new double[(int)(simulationLength*10)];
 		double sum=0; int i = 0;
 		while (i<simulationLength*10 && sum<simulationLength*.9)
 			//We can run outside of our time interval. Don't bother once we have. End if we are "close enough"
@@ -141,6 +142,7 @@ int main() {
 		    	cout<<number<<" ";
 		    	sum+=number;
 		    	i++;
+		    	totalNumberCars++;
 		    }
 		}
 		for (i; i<simulationLength*10;i++) // populate with dummy information
@@ -150,6 +152,7 @@ int main() {
 	    if(verbose) cout<<"Total: "<<sum;
 		cout<<endl;
 	}
+	if(verbose) {cout<<"Total Number of Cars in Work Load is: "<<totalNumberCars<<endl;}
 	//End Workload Creation//////////////////////////////////////////////////////////////////////////////////////////////////
 
 	if(runmode==1)
@@ -271,7 +274,7 @@ statistics WRAPPER(int numDirections, double simulationLength, double** workLoad
 
 statistics TrafficLight(int DailyLoad, bool verbose) //of TimeandDirection class
 {
-	bool allCarsThrough = false;
+	bool allCarsThrough = false; int ReleaseCounter = 0;
 		//This function monitors the carQueues, while it waits for the dailyLoad to be done.
 		while(!allCarsThrough)
 		{
@@ -384,9 +387,9 @@ statistics TrafficLight(int DailyLoad, bool verbose) //of TimeandDirection class
 				if(direction==anyoneWaiting||direction==oppositeDirection)//If this is the lane we popped from
 				{
 					//Check to see if there are more cars
-					if(carQueues[direction].empty())
+					if(carQueues[direction].empty()) //if is empty
 						//If not, then put headOfTraffic to 0.
-						headOfTraffic[direction]=0;
+						headOfTraffic[direction]=0; //Set to 0
 					else
 						//If so, then put headOfTraffic = max + 1 of all other directions
 					{
