@@ -9,7 +9,7 @@ Language: C++11.
 
 Files:	README.md (This file.)
 	CSCI144_Report.doc (Details of creation and detailed walkthrough of program.)
-	CSCI144_Project (Executes.)
+	CSCI144_Project (Executable.)
 	/src/CSCI144_Project.cpp (Main simulation and wrapping.)
 	/src/stopsign.h (Some linking declarations and definitions, as well as includes.)
 	/src/stopsign.cpp (Initial implementation under the Stop Sign rule.)
