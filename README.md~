@@ -16,12 +16,12 @@ Files:	README.md (This file.)
 
 Run Details: While in the directory use the following command to run:
 	./CSCI144_Project
-If the user prefers to compile, use the following command:
-	
+If the user prefers to compile, use the following command from within /src/:
+	g++ -std=c++11 -pthread CSCI144_Project.cpp stopsign.cpp -o CSCI144
 	You will be prompted to provide 4 inputs on load:
 	1. Maximum time to produce cars for.
 	2. Number of directions that cars will be coming from.
-	3. Whether you wish to run just the stop sign simulation, just the traffic light simulation, or both with a comparison at the end.
+	3. Whether you wish to run just the stop sign simulation, just the traffic light simulation, or both with a comparison at the end. Verbose mode includes additional print statements for debugging.
 	4. The mean value for the exponential distribution employed.
 	At any time during setup, enter a 0 in a field to exit. Alternatively, you may use Ctrl+C to force a quit at any time.
 
